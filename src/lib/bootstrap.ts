@@ -11,6 +11,10 @@ import { syncCoreData } from "./seed-core";
 let bootstrapPromise: Promise<void> | null = null;
 
 export function ensureBootstrap(): Promise<void> {
+  // ビルド（事前生成）中はDBに触らない。実リクエスト時のみ実行する。
+  if (process.env.NEXT_PHASE === "phase-production-build") {
+    return Promise.resolve();
+  }
   if (!bootstrapPromise) {
     bootstrapPromise = run().catch((e) => {
       // 失敗した場合は次のリクエストで再試行できるようにする

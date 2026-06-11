@@ -2,6 +2,9 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { LoginForm } from "./LoginForm";
 
+// ビルド時の事前生成でDBに触れないよう、常に動的レンダリング
+export const dynamic = "force-dynamic";
+
 export default async function LoginPage() {
   // DB未接続でもログイン画面自体は表示できるようにする
   let user = null;
