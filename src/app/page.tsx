@@ -5,6 +5,12 @@ import { getCurrentUser } from "@/lib/auth";
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const user = await getCurrentUser();
+  // DB未接続でも必ずログイン画面へ進めるようにする
+  let user = null;
+  try {
+    user = await getCurrentUser();
+  } catch (e) {
+    console.error("home: db error:", e);
+  }
   redirect(user ? "/dashboard" : "/login");
 }

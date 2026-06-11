@@ -11,11 +11,24 @@ export default async function SignPage({
 }: {
   params: { token: string };
 }) {
-  await ensureBootstrap();
-  const signer = await prisma.signer.findUnique({
-    where: { token: params.token },
-    include: { contract: true },
-  });
+  // DB未接続でもクラッシュさせず、案内メッセージを表示する
+  let signer;
+  try {
+    await ensureBootstrap();
+    signer = await prisma.signer.findUnique({
+      where: { token: params.token },
+      include: { contract: true },
+    });
+  } catch (e) {
+    console.error("sign page: db error:", e);
+    return (
+      <div className="sign-wrap">
+        <div className="alert error">
+          システムに一時的な問題が発生しています。お手数ですが時間をおいて再度お試しください。
+        </div>
+      </div>
+    );
+  }
 
   // 無効なトークン
   if (!signer) {

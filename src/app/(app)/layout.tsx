@@ -7,7 +7,13 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getCurrentUser();
+  // DB未接続でもクラッシュさせず、ログイン画面（エラー表示あり）へ誘導する
+  let user = null;
+  try {
+    user = await getCurrentUser();
+  } catch (e) {
+    console.error("app layout: db error:", e);
+  }
   if (!user) redirect("/login");
 
   return (
