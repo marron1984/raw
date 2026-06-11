@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { ensureBootstrap } from "@/lib/bootstrap";
 import {
   createSession,
   destroySession,
@@ -17,6 +18,17 @@ export async function loginAction(
 
   if (!email || !password) {
     return { error: "メールアドレスとパスワードを入力してください。" };
+  }
+
+  // 初回アクセス時にDB（テーブル・初期管理者）を自動セットアップ
+  try {
+    await ensureBootstrap();
+  } catch (e) {
+    console.error("bootstrap failed:", e);
+    return {
+      error:
+        "データベースに接続できません。管理者は DATABASE_URL の設定を確認してください。",
+    };
   }
 
   const user = await prisma.user.findUnique({ where: { email } });

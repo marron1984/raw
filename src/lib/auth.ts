@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "./db";
+import { ensureBootstrap } from "./bootstrap";
 
 const COOKIE_NAME = "ec_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 12; // 12時間
@@ -93,6 +94,8 @@ export function destroySession(): void {
 
 // 現在のログインユーザーを取得（未ログインなら null）
 export async function getCurrentUser(): Promise<SessionUser | null> {
+  // 初回アクセス時にDBを自動セットアップ（2回目以降は即時解決）
+  await ensureBootstrap();
   const token = cookies().get(COOKIE_NAME)?.value;
   if (!token) return null;
   const payload = verifyToken(token);

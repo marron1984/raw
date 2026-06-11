@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { ensureBootstrap } from "@/lib/bootstrap";
 import { markViewedAction } from "@/app/actions/sign";
 import { CATEGORY_LABELS } from "@/lib/template";
 import { SignForm } from "./SignForm";
@@ -10,6 +11,7 @@ export default async function SignPage({
 }: {
   params: { token: string };
 }) {
+  await ensureBootstrap();
   const signer = await prisma.signer.findUnique({
     where: { token: params.token },
     include: { contract: true },
