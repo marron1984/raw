@@ -2,7 +2,7 @@
   "name": "denshi-keiyaku",
   "version": "0.1.0",
   "private": true,
-  "description": "自社向け電子契約システム（入居契約・訪問介護利用契約など）",
+  "description": "自社向け Dケア電子契約システム（入居契約・訪問介護利用契約など）",
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",

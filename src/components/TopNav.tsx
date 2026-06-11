@@ -7,7 +7,7 @@ export function TopNav({ user }: { user: SessionUser }) {
     <div className="topbar">
       <div className="topbar-inner">
         <Link href="/dashboard" className="brand">
-          電子契約システム
+          Dケア電子契約システム
         </Link>
         <nav className="nav">
           <Link href="/dashboard">ダッシュボード</Link>

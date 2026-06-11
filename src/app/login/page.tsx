@@ -18,7 +18,7 @@ export default async function LoginPage() {
     >
       <div style={{ width: 380 }}>
         <div style={{ textAlign: "center", marginBottom: 20 }}>
-          <h1>電子契約システム</h1>
+          <h1>Dケア電子契約システム</h1>
           <p className="muted">社内アカウントでログインしてください</p>
         </div>
         <div className="panel">

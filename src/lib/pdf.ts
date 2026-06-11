@@ -197,7 +197,7 @@ export async function generateContractPdf(
   // フッター（証跡情報）
   hr();
   draw(
-    `この文書は電子契約システムにより生成されました。`,
+    `この文書はDケア電子契約システムにより生成されました。`,
     9,
     { color: gray, gap: 2 }
   );
