@@ -238,6 +238,19 @@ th {
 .muted {
   color: var(--muted);
 }
+.page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin: 18px 0;
+}
 .row-actions {
   display: flex;
   gap: 12px;
@@ -312,6 +325,121 @@ th {
 .checkbox-row input {
   width: auto;
   margin-top: 4px;
+}
+
+/* ─────────────────────────────────────────────
+   スマートフォン向けレスポンシブ対応
+   ───────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .container {
+    padding: 16px 12px 56px;
+  }
+  h1 {
+    font-size: 19px;
+  }
+  h2 {
+    font-size: 15px;
+  }
+
+  /* ヘッダー: 2段組み＋ナビは横スクロール */
+  .topbar {
+    padding: 0 12px;
+  }
+  .topbar-inner {
+    height: auto;
+    flex-wrap: wrap;
+    padding: 10px 0;
+    gap: 8px 12px;
+  }
+  .brand {
+    font-size: 15px;
+  }
+  .topbar .user {
+    margin-left: auto;
+    font-size: 12px;
+    gap: 8px;
+  }
+  .nav {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    gap: 16px;
+    padding-bottom: 2px;
+  }
+
+  /* レイアウト */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .grid2 {
+    grid-template-columns: 1fr;
+  }
+  .kv {
+    grid-template-columns: 105px 1fr;
+    font-size: 12px;
+  }
+  .panel {
+    padding: 14px;
+  }
+
+  /* 一覧テーブル: 横スクロールで崩れを防止 */
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  th,
+  td {
+    padding: 9px 10px;
+    white-space: nowrap;
+  }
+
+  /* フォーム: iOSの自動ズームを防ぎ、タップしやすく */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="date"],
+  input[type="number"],
+  select,
+  textarea {
+    font-size: 16px;
+    padding: 11px 12px;
+  }
+  .btn {
+    padding: 12px 18px;
+    font-size: 15px;
+  }
+  .btn-row {
+    width: 100%;
+  }
+  .btn-row .btn,
+  .btn-row form {
+    flex: 1 1 auto;
+  }
+  .btn-row form .btn {
+    width: 100%;
+  }
+
+  /* 署名ページ */
+  .sign-wrap {
+    padding: 20px 12px 64px;
+  }
+  .sign-doc {
+    padding: 18px 14px;
+    font-size: 13.5px;
+  }
+  .consent-box {
+    padding: 16px 14px;
+  }
+  .sign-pad {
+    height: 170px;
+  }
+  .copy-url {
+    font-size: 11px;
+  }
 }
 
 /* 手書き署名パッド */

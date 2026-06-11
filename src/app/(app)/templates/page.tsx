@@ -12,7 +12,7 @@ export default async function TemplatesPage() {
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div className="page-head">
         <h1>契約書テンプレート</h1>
         <Link href="/templates/new" className="btn">
           ＋ 新規テンプレート

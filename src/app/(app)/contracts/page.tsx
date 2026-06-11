@@ -13,7 +13,7 @@ export default async function ContractsPage() {
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div className="page-head">
         <h1>契約一覧</h1>
         <Link href="/contracts/new" className="btn">
           ＋ 新規契約を作成

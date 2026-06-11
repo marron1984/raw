@@ -27,21 +27,14 @@ export default async function DashboardPage() {
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div className="page-head">
         <h1>ダッシュボード</h1>
         <Link href="/contracts/new" className="btn">
           ＋ 新規契約を作成
         </Link>
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-          gap: 14,
-          margin: "18px 0",
-        }}
-      >
+      <div className="stats-grid">
         {cards.map((c) => (
           <div className="panel" key={c.label} style={{ textAlign: "center", margin: 0 }}>
             <div style={{ fontSize: 28, fontWeight: 700 }}>{c.value}</div>

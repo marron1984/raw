@@ -75,7 +75,7 @@ export default async function ContractDetailPage({
           ← 契約一覧へ
         </Link>
       </div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div className="page-head">
         <h1>{contract.title}</h1>
         <ContractStatusBadge status={contract.status} />
       </div>
