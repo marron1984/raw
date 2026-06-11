@@ -1,0 +1,123 @@
+// 自社向け電子契約システム データモデル
+// 入居契約・訪問介護利用契約などの電子契約・電子署名を管理する
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// 社内ユーザー（職員）
+// ─────────────────────────────────────────────
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         String   @default("STAFF") // ADMIN | STAFF
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  templates ContractTemplate[]
+  contracts Contract[]
+}
+
+// ─────────────────────────────────────────────
+// 契約書テンプレート
+// 本文中に {{placeholder}} 形式の差し込み項目を持てる
+// ─────────────────────────────────────────────
+model ContractTemplate {
+  id          String   @id @default(cuid())
+  title       String
+  category    String   @default("OTHER") // RESIDENCE(入居契約) | CARE(訪問介護) | OTHER
+  description String?
+  body        String // 契約本文（{{name}} などのプレースホルダを含む）
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy   User?      @relation(fields: [createdById], references: [id])
+  createdById String?
+  contracts   Contract[]
+}
+
+// ─────────────────────────────────────────────
+// 契約（テンプレートから生成された個別の契約案件）
+// ─────────────────────────────────────────────
+model Contract {
+  id        String   @id @default(cuid())
+  title     String
+  category  String   @default("OTHER")
+  // 締結時点の本文スナップショット（テンプレート変更の影響を受けない）
+  body      String
+  // 差し込み項目の値（JSON文字列）
+  fields    String   @default("{}")
+  status    String   @default("DRAFT") // DRAFT | SENT | VIEWED | SIGNED | DECLINED | CANCELLED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  sentAt    DateTime?
+  completedAt DateTime?
+
+  template   ContractTemplate? @relation(fields: [templateId], references: [id])
+  templateId String?
+  createdBy  User?             @relation(fields: [createdById], references: [id])
+  createdById String?
+
+  signers   Signer[]
+  auditLogs AuditLog[]
+}
+
+// ─────────────────────────────────────────────
+// 署名者（契約相手＝入居者・利用者など）
+// メール認証＋同意ボタン方式で署名を記録する
+// ─────────────────────────────────────────────
+model Signer {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  // 署名用URLのトークン（推測困難なランダム値）
+  token     String   @unique
+  status    String   @default("PENDING") // PENDING | VIEWED | SIGNED | DECLINED
+  order     Int      @default(1)
+
+  // 署名（同意）記録
+  viewedAt   DateTime?
+  signedAt   DateTime?
+  declinedAt DateTime?
+  // 手書き署名画像（PNGのdata URL。スマホ・PCのタッチ/マウス入力で描画）
+  signatureImage String?
+  // 任意：署名時に入力した氏名（補助記録）
+  typedName  String?
+  // 監査用の本人確認情報
+  ipAddress  String?
+  userAgent  String?
+
+  createdAt DateTime @default(now())
+
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  contractId String
+
+  @@index([contractId])
+}
+
+// ─────────────────────────────────────────────
+// 監査ログ（誰がいつ何をしたかの記録：法的証跡）
+// ─────────────────────────────────────────────
+model AuditLog {
+  id        String   @id @default(cuid())
+  event     String // CREATED | SENT | VIEWED | SIGNED | DECLINED | CANCELLED | COMPLETED | PDF_GENERATED
+  actor     String // 操作者の表示名（職員名 or 署名者名 or system）
+  detail    String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  contractId String
+
+  @@index([contractId])
+}
