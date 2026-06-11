@@ -6,18 +6,29 @@ type Db = PrismaClient | Prisma.TransactionClient;
 
 // 初期管理者とテンプレートをDBへ同期する（seed / 起動時bootstrap 共用）
 export async function syncCoreData(db: Db): Promise<void> {
-  // 環境変数が無くてもそのまま動くよう、既定の管理者アカウントを用意。
-  // パスワードは秘密情報のためコードに実値を書かず、SEED_ADMIN_PASSWORD で渡す。
   const email = process.env.SEED_ADMIN_EMAIL ?? "yoshida@aska-g.com";
-  const password = process.env.SEED_ADMIN_PASSWORD ?? "change-me-now";
   const name = process.env.SEED_ADMIN_NAME ?? "吉田";
+  // パスワードは秘密情報のため既定値を持たない（fail-closed）。
+  // SEED_ADMIN_PASSWORD 未設定時は管理者の作成・更新を行わない。
+  const password = process.env.SEED_ADMIN_PASSWORD;
 
-  const passwordHash = await bcrypt.hash(password, 10);
-  const admin = await db.user.upsert({
-    where: { email },
-    update: { passwordHash, name, role: "ADMIN", isActive: true },
-    create: { email, name, passwordHash, role: "ADMIN" },
-  });
+  let admin: { id: string } | null = null;
+  if (password) {
+    const passwordHash = await bcrypt.hash(password, 10);
+    admin = await db.user.upsert({
+      where: { email },
+      update: { passwordHash, name, role: "ADMIN", isActive: true },
+      create: { email, name, passwordHash, role: "ADMIN" },
+    });
+  } else {
+    admin = await db.user.findUnique({ where: { email } });
+    if (!admin) {
+      console.warn(
+        "SEED_ADMIN_PASSWORD が未設定のため、初期管理者を作成しません。" +
+          "環境変数 SEED_ADMIN_PASSWORD を設定してください。"
+      );
+    }
+  }
 
   // タイトル一致で作成 or 更新
   async function ensureTemplate(data: {
@@ -36,7 +47,7 @@ export async function syncCoreData(db: Db): Promise<void> {
       });
     } else {
       await db.contractTemplate.create({
-        data: { ...data, createdById: admin.id },
+        data: { ...data, createdById: admin?.id ?? null },
       });
     }
   }

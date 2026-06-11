@@ -33,6 +33,16 @@ export async function loginAction(
 
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user || !user.isActive) {
+    // 管理者が一人も存在しない場合は、原因（環境変数の未設定）を明示する
+    if (!process.env.SEED_ADMIN_PASSWORD) {
+      const count = await prisma.user.count();
+      if (count === 0) {
+        return {
+          error:
+            "管理者がまだ作成されていません。環境変数 SEED_ADMIN_PASSWORD を設定して再デプロイしてください。",
+        };
+      }
+    }
     return { error: "メールアドレスまたはパスワードが正しくありません。" };
   }
   const ok = await verifyPassword(password, user.passwordHash);

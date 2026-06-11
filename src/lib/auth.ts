@@ -17,9 +17,19 @@ export type SessionUser = {
 function getSecret(): string {
   const secret = process.env.SESSION_SECRET;
   if (secret && secret.length >= 16) return secret;
-  // SESSION_SECRET が未設定でも動くよう既定値を使用する。
-  // セキュリティ強化のため、本番では SESSION_SECRET の設定を推奨。
-  return "denshi-keiyaku-default-session-secret-please-override-in-env";
+  // SESSION_SECRET 未設定時は DATABASE_URL（DBパスワードを含む秘密値）から
+  // 環境ごとに固有の鍵を導出する。ソースコード上の共有既定値は使わない。
+  // ※ SESSION_SECRET の明示設定を推奨。DATABASE_URL変更時はセッションが無効になる。
+  const dbUrl = process.env.DATABASE_URL;
+  if (dbUrl && dbUrl.length >= 16) {
+    return crypto
+      .createHash("sha256")
+      .update("dcare-keiyaku-session-v1:" + dbUrl)
+      .digest("hex");
+  }
+  throw new Error(
+    "SESSION_SECRET または DATABASE_URL を設定してください。"
+  );
 }
 
 // base64url ヘルパ
