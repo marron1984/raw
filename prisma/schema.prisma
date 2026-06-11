@@ -67,6 +67,10 @@ model Contract {
   sentAt    DateTime?
   completedAt DateTime?
 
+  // Googleドライブ保存の記録
+  driveFileId String?
+  driveSavedAt DateTime?
+
   template   ContractTemplate? @relation(fields: [templateId], references: [id])
   templateId String?
   createdBy  User?             @relation(fields: [createdById], references: [id])

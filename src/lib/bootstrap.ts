@@ -32,6 +32,14 @@ async function tablesExist(): Promise<boolean> {
   return rows.length > 0 && rows[0].r != null;
 }
 
+// 既存DBへのカラム追加（後方互換のための軽量マイグレーション）。
+// bootstrap-sql は新規DB作成時のみ実行されるため、既存DBには
+// ADD COLUMN IF NOT EXISTS で冪等にカラムを追加する。
+const COLUMN_MIGRATIONS = [
+  'ALTER TABLE "Contract" ADD COLUMN IF NOT EXISTS "driveFileId" TEXT',
+  'ALTER TABLE "Contract" ADD COLUMN IF NOT EXISTS "driveSavedAt" TIMESTAMP(3)',
+];
+
 async function run(): Promise<void> {
   if (!(await tablesExist())) {
     // 複数インスタンスが同時に初期化しないようアドバイザリロックで直列化。
@@ -51,6 +59,10 @@ async function run(): Promise<void> {
       },
       { timeout: 60_000 }
     );
+  }
+  // 既存DBへのカラム追加（冪等）
+  for (const sql of COLUMN_MIGRATIONS) {
+    await prisma.$executeRawUnsafe(sql);
   }
   // 初期管理者・標準テンプレートを同期（冪等）
   await syncCoreData(prisma);

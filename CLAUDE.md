@@ -50,10 +50,19 @@ npm run build         # 本番ビルド（CIと同じ。DB不要で通ること�
 | `APP_URL` | 任意 | 署名URL生成用（未設定時はVercel本番ドメイン） |
 | `RESEND_API_KEY` | 任意 | 署名依頼メール送信（Resend）。未設定時はメール送信せずURL案内のみ |
 | `MAIL_FROM` | 任意 | メール送信元（例 `名前 <addr@example.com>`）。未設定時はResendテスト送信元 |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | 任意 | 締結PDFのGoogleドライブ保存用サービスアカウント鍵JSON（全文） |
+| `GDRIVE_FOLDER_ID` | 任意 | 保存先フォルダID（共有ドライブ内。SAをメンバーに追加） |
 
 ## メール送信
 - 署名依頼メールは `src/lib/email.ts`（Resend HTTP API）で送信。`fetch` のみで依存追加なし
 - `RESEND_API_KEY` 未設定なら送信せず `skipped` を返し、従来のURLコピー運用にフォールバック（fail-graceful）
+
+## Googleドライブ保存
+- 締結時（全署名完了時）に `src/lib/drive-save.ts` が締結PDFを共有ドライブへ自動保存
+- 認証はサービスアカウントのJWT（`src/lib/gdrive.ts`、`fetch`+`crypto`のみ・依存追加なし）
+- 共有ドライブ前提（SAはマイドライブに容量を持たないため）。`supportsAllDrives=true`で送信
+- 未設定なら `skipped`、失敗しても署名処理は継続（fail-graceful・監査ログに記録）
+- `Contract.driveFileId` / `driveSavedAt` に保存結果を記録。既存DBへは bootstrap の ADD COLUMN IF NOT EXISTS で対応
 
 ## 画面構成
 - `/login` … 社内ログイン

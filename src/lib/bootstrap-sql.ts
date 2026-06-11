@@ -44,6 +44,8 @@ CREATE TABLE "Contract" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "sentAt" TIMESTAMP(3),
     "completedAt" TIMESTAMP(3),
+    "driveFileId" TEXT,
+    "driveSavedAt" TIMESTAMP(3),
     "templateId" TEXT,
     "createdById" TEXT,
 

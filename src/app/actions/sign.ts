@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { recordAudit, getClientIp } from "@/lib/audit";
+import { saveContractToDrive } from "@/lib/drive-save";
 
 // 署名ページが開かれたことを記録（閲覧ログ）
 export async function markViewedAction(token: string): Promise<void> {
@@ -101,6 +102,8 @@ export async function signAction(
       actor: "system",
       detail: "全署名者の署名が完了し締結",
     });
+    // 締結時に締結PDFをGoogleドライブへ自動保存（未設定時は何もしない）
+    await saveContractToDrive(signer.contractId, "system");
   }
 
   revalidatePath(`/contracts/${signer.contractId}`);

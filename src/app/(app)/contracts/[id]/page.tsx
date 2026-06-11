@@ -6,7 +6,9 @@ import {
   cancelContractAction,
   deleteContractAction,
   resendSignEmailAction,
+  saveToDriveAction,
 } from "@/app/actions/contracts";
+import { isDriveConfigured } from "@/lib/drive-save";
 import {
   ContractStatusBadge,
   SignerStatusBadge,
@@ -29,6 +31,8 @@ const EVENT_LABELS: Record<string, string> = {
   PDF_GENERATED: "PDF生成",
   EMAIL_SENT: "メール送信",
   EMAIL_FAILED: "メール送信失敗",
+  DRIVE_SAVED: "ドライブ保存",
+  DRIVE_FAILED: "ドライブ保存失敗",
 };
 
 function fmt(d: Date | null) {
@@ -59,6 +63,7 @@ export default async function ContractDetailPage({
 
   const appUrl = getAppUrl();
   const emailOn = isEmailConfigured();
+  const driveOn = isDriveConfigured();
   const isDraft = contract.status === "DRAFT";
   const isSigned = contract.status === "SIGNED";
   const canShowLinks = ["SENT", "VIEWED", "SIGNED", "DECLINED"].includes(
@@ -68,6 +73,7 @@ export default async function ContractDetailPage({
   const sendWithId = sendContractAction.bind(null, contract.id);
   const cancelWithId = cancelContractAction.bind(null, contract.id);
   const deleteWithId = deleteContractAction.bind(null, contract.id);
+  const saveDriveWithId = saveToDriveAction.bind(null, contract.id);
 
   return (
     <>
@@ -95,6 +101,15 @@ export default async function ContractDetailPage({
             <a className="btn" href={`/api/contracts/${contract.id}/pdf`} target="_blank">
               締結済みPDFをダウンロード
             </a>
+          )}
+          {isSigned && driveOn && (
+            <form action={saveDriveWithId}>
+              <button className="btn secondary">
+                {contract.driveSavedAt
+                  ? "Googleドライブに再保存"
+                  : "Googleドライブに保存"}
+              </button>
+            </form>
           )}
           {!isSigned && (
             <a
@@ -143,6 +158,16 @@ export default async function ContractDetailPage({
           <dd>{fmt(contract.sentAt)}</dd>
           <dt>締結完了日時</dt>
           <dd>{fmt(contract.completedAt)}</dd>
+          {driveOn && (
+            <>
+              <dt>Googleドライブ</dt>
+              <dd>
+                {contract.driveSavedAt
+                  ? `保存済み（${fmt(contract.driveSavedAt)}）`
+                  : "未保存"}
+              </dd>
+            </>
+          )}
         </dl>
       </div>
 

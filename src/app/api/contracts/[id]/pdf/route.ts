@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { recordAudit } from "@/lib/audit";
-import { generateContractPdf } from "@/lib/pdf";
-import { CATEGORY_LABELS } from "@/lib/template";
+import { renderContractPdf } from "@/lib/contract-pdf";
 
 export const dynamic = "force-dynamic";
 
@@ -19,29 +18,16 @@ export async function GET(
 
   const contract = await prisma.contract.findUnique({
     where: { id: params.id },
-    include: { signers: { orderBy: { order: "asc" } } },
+    select: { id: true, status: true },
   });
   if (!contract) {
     return NextResponse.json({ error: "見つかりません" }, { status: 404 });
   }
 
-  const pdf = await generateContractPdf({
-    title: contract.title,
-    categoryLabel: CATEGORY_LABELS[contract.category] ?? contract.category,
-    body: contract.body,
-    contractId: contract.id,
-    createdAt: contract.createdAt,
-    completedAt: contract.completedAt,
-    signers: contract.signers.map((s) => ({
-      name: s.name,
-      email: s.email,
-      status: s.status,
-      signedAt: s.signedAt,
-      typedName: s.typedName,
-      ipAddress: s.ipAddress,
-      signatureImage: s.signatureImage,
-    })),
-  });
+  const result = await renderContractPdf(contract.id);
+  if (!result) {
+    return NextResponse.json({ error: "見つかりません" }, { status: 404 });
+  }
 
   // 締結済みPDFの生成は証跡として記録
   if (contract.status === "SIGNED") {
@@ -53,12 +39,11 @@ export async function GET(
     });
   }
 
-  const filename = `contract-${contract.id}.pdf`;
-  return new NextResponse(Buffer.from(pdf), {
+  return new NextResponse(Buffer.from(result.bytes), {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="${filename}"`,
+      "Content-Disposition": `inline; filename="contract-${contract.id}.pdf"`,
       "Cache-Control": "no-store",
     },
   });

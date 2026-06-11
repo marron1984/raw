@@ -10,6 +10,7 @@ import { recordAudit, getClientIp } from "@/lib/audit";
 import { generateSignToken } from "@/lib/token";
 import { sendSignRequestEmail } from "@/lib/email";
 import { signUrlForToken } from "@/lib/url";
+import { saveContractToDrive } from "@/lib/drive-save";
 
 const signerSchema = z.object({
   name: z.string().trim().min(1),
@@ -146,6 +147,15 @@ export async function resendSignEmailAction(signerId: string): Promise<void> {
     ipAddress: getClientIp(),
   });
   revalidatePath(`/contracts/${signer.contractId}`);
+}
+
+// 締結済み契約のPDFをGoogleドライブへ手動保存（再保存）する
+export async function saveToDriveAction(id: string): Promise<void> {
+  const user = await requireUser();
+  const contract = await prisma.contract.findUnique({ where: { id } });
+  if (!contract || contract.status !== "SIGNED") return;
+  await saveContractToDrive(id, user.name);
+  revalidatePath(`/contracts/${id}`);
 }
 
 // 契約の取消
