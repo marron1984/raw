@@ -34,6 +34,9 @@ const FIELD_LABELS: Record<string, string> = {
   service_type: "サービス種別",
   schedule: "利用曜日・時間",
   office_name: "担当事業所",
+  contract_date: "契約締結年月日",
+  agent_name: "代理人氏名",
+  agent_address: "代理人住所",
 };
 
 type Signer = { name: string; email: string };
