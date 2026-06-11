@@ -8,10 +8,10 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  // マイグレーション/スキーマ反映用の直結URL（Neon等のプール接続を使う場合に指定）
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  // 社内利用の規模では直結(非プール)接続1本で十分。
+  // Neonの「Connection pooling」をオフにした接続文字列を設定してください。
+  url      = env("DATABASE_URL")
 }
 
 // ─────────────────────────────────────────────
