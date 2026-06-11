@@ -8,6 +8,10 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: "4mb",
     },
+    // PDF生成で使う日本語フォントを、Vercelのサーバーレス関数に確実に同梱する
+    outputFileTracingIncludes: {
+      "/api/contracts/[id]/pdf": ["./src/assets/fonts/**"],
+    },
   },
 };
 

@@ -2,12 +2,16 @@
 // 入居契約・訪問介護利用契約などの電子契約・電子署名を管理する
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // Vercel(Lambda) で動作させるため、ネイティブに加えて RHEL/OpenSSL3 のエンジンも含める
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // マイグレーション/スキーマ反映用の直結URL（Neon等のプール接続を使う場合に指定）
+  directUrl = env("DIRECT_URL")
 }
 
 // ─────────────────────────────────────────────
