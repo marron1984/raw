@@ -52,7 +52,12 @@ export default async function ContractDetailPage({
   });
   if (!contract) notFound();
 
-  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
+  // APP_URL が未設定でも、Vercelの本番ドメインを自動利用する
+  const appUrl =
+    process.env.APP_URL ??
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : "http://localhost:3000");
   const isDraft = contract.status === "DRAFT";
   const isSigned = contract.status === "SIGNED";
   const canShowLinks = ["SENT", "VIEWED", "SIGNED", "DECLINED"].includes(

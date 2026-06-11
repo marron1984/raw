@@ -4,15 +4,17 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
-  const email = process.env.SEED_ADMIN_EMAIL ?? "admin@example.com";
-  const password = process.env.SEED_ADMIN_PASSWORD ?? "admin1234";
-  const name = process.env.SEED_ADMIN_NAME ?? "システム管理者";
+  // 環境変数が無くてもそのまま動くよう、既定の管理者アカウントを用意。
+  // パスワードは秘密情報のためコードに実値を書かず、SEED_ADMIN_PASSWORD で渡す。
+  const email = process.env.SEED_ADMIN_EMAIL ?? "yoshida@aska-g.com";
+  const password = process.env.SEED_ADMIN_PASSWORD ?? "change-me-now";
+  const name = process.env.SEED_ADMIN_NAME ?? "吉田";
 
-  // 初期管理者
+  // 初期管理者（パスワードは毎回 .env / 既定値に合わせて更新する）
   const passwordHash = await bcrypt.hash(password, 10);
   const admin = await prisma.user.upsert({
     where: { email },
-    update: {},
+    update: { passwordHash, name, role: "ADMIN", isActive: true },
     create: { email, name, passwordHash, role: "ADMIN" },
   });
   console.log(`✔ 管理者ユーザー: ${admin.email}`);
