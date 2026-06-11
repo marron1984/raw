@@ -12,7 +12,7 @@ function loadFontBytes(): Uint8Array {
     "src",
     "assets",
     "fonts",
-    "NotoSansJP-Regular.otf"
+    "NotoSansJP-Regular.ttf"
   );
   cachedFontBytes = new Uint8Array(fs.readFileSync(fontPath));
   return cachedFontBytes;
@@ -84,7 +84,10 @@ export async function generateContractPdf(
 ): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   doc.registerFontkit(fontkit);
-  const font = await doc.embedFont(loadFontBytes(), { subset: true });
+  // 日本語フォントは subset:false で全体を埋め込む。
+  // pdf-lib のサブセット処理は日本語(glyf/CFF)で壊れたフォントを生成し、
+  // ビューアで文字が表示されない不具合があるため、サブセットしない。
+  const font = await doc.embedFont(loadFontBytes(), { subset: false });
 
   const pageSize: [number, number] = [595.28, 841.89]; // A4
   const margin = 56;
