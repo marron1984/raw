@@ -5,6 +5,7 @@ import {
   sendContractAction,
   cancelContractAction,
   deleteContractAction,
+  resendSignEmailAction,
 } from "@/app/actions/contracts";
 import {
   ContractStatusBadge,
@@ -12,6 +13,8 @@ import {
 } from "@/components/StatusBadge";
 import { CopyField } from "@/components/CopyField";
 import { CATEGORY_LABELS } from "@/lib/template";
+import { isEmailConfigured } from "@/lib/email";
+import { getAppUrl } from "@/lib/url";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +27,8 @@ const EVENT_LABELS: Record<string, string> = {
   CANCELLED: "取消",
   COMPLETED: "締結完了",
   PDF_GENERATED: "PDF生成",
+  EMAIL_SENT: "メール送信",
+  EMAIL_FAILED: "メール送信失敗",
 };
 
 function fmt(d: Date | null) {
@@ -52,12 +57,8 @@ export default async function ContractDetailPage({
   });
   if (!contract) notFound();
 
-  // APP_URL が未設定でも、Vercelの本番ドメインを自動利用する
-  const appUrl =
-    process.env.APP_URL ??
-    (process.env.VERCEL_PROJECT_PRODUCTION_URL
-      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : "http://localhost:3000");
+  const appUrl = getAppUrl();
+  const emailOn = isEmailConfigured();
   const isDraft = contract.status === "DRAFT";
   const isSigned = contract.status === "SIGNED";
   const canShowLinks = ["SENT", "VIEWED", "SIGNED", "DECLINED"].includes(
@@ -85,7 +86,9 @@ export default async function ContractDetailPage({
         <div className="btn-row">
           {isDraft && (
             <form action={sendWithId}>
-              <button className="btn success">署名依頼を送信する</button>
+              <button className="btn success">
+                {emailOn ? "署名依頼メールを送信する" : "署名依頼を送信する"}
+              </button>
             </form>
           )}
           {isSigned && (
@@ -115,7 +118,14 @@ export default async function ContractDetailPage({
         </div>
         {isDraft && (
           <p className="hint" style={{ marginTop: 10 }}>
-            送信すると署名者ごとの署名用URLが有効になります。URLを各署名者へメール等で案内してください。
+            {emailOn
+              ? "送信すると、各署名者のメールアドレス宛に署名依頼メール（署名用URL付き）が届きます。"
+              : "送信すると署名者ごとの署名用URLが有効になります。メール送信は未設定のため、下に表示されるURLを各署名者へ案内してください。"}
+          </p>
+        )}
+        {isDraft && !emailOn && (
+          <p className="hint" style={{ marginTop: 4, color: "var(--warn)" }}>
+            メール自動送信を使うには、環境変数 RESEND_API_KEY（と送信元 MAIL_FROM）の設定が必要です。
           </p>
         )}
       </div>
@@ -176,8 +186,27 @@ export default async function ContractDetailPage({
             )}
             {canShowLinks && s.status !== "SIGNED" && (
               <div style={{ marginTop: 10 }}>
-                <div className="hint" style={{ marginBottom: 4 }}>
-                  署名用URL（この署名者専用）
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: 4,
+                    gap: 8,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <span className="hint">署名用URL（この署名者専用）</span>
+                  {emailOn && (
+                    <form action={resendSignEmailAction.bind(null, s.id)}>
+                      <button
+                        className="btn secondary"
+                        style={{ padding: "5px 12px" }}
+                      >
+                        メールを再送
+                      </button>
+                    </form>
+                  )}
                 </div>
                 <CopyField value={`${appUrl}/sign/${s.token}`} />
               </div>

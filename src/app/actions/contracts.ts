@@ -8,6 +8,8 @@ import { requireUser } from "@/lib/auth";
 import { renderTemplate, extractPlaceholders } from "@/lib/template";
 import { recordAudit, getClientIp } from "@/lib/audit";
 import { generateSignToken } from "@/lib/token";
+import { sendSignRequestEmail } from "@/lib/email";
+import { signUrlForToken } from "@/lib/url";
 
 const signerSchema = z.object({
   name: z.string().trim().min(1),
@@ -71,20 +73,19 @@ export async function createContractAction(
   return { ok: true, id: contract.id };
 }
 
-// 契約を「送信」状態にする（署名者に署名URLを案内する段階）
+// 契約を「送信」状態にし、署名者へ署名依頼メールを送る
 export async function sendContractAction(id: string): Promise<void> {
   const user = await requireUser();
-  const contract = await prisma.contract.findUnique({ where: { id } });
+  const contract = await prisma.contract.findUnique({
+    where: { id },
+    include: { signers: true },
+  });
   if (!contract) return;
   if (contract.status !== "DRAFT") return;
 
   await prisma.contract.update({
     where: { id },
     data: { status: "SENT", sentAt: new Date() },
-  });
-  await prisma.signer.updateMany({
-    where: { contractId: id, status: "PENDING" },
-    data: { status: "PENDING" },
   });
   await recordAudit({
     contractId: id,
@@ -93,8 +94,58 @@ export async function sendContractAction(id: string): Promise<void> {
     detail: "署名依頼を送信",
     ipAddress: getClientIp(),
   });
+
+  // 各署名者へ署名依頼メールを送信（メール未設定時はURLコピー運用）
+  for (const signer of contract.signers) {
+    const res = await sendSignRequestEmail({
+      to: signer.email,
+      signerName: signer.name,
+      contractTitle: contract.title,
+      signUrl: signUrlForToken(signer.token),
+    });
+    if (res.skipped) continue;
+    await recordAudit({
+      contractId: id,
+      event: res.ok ? "EMAIL_SENT" : "EMAIL_FAILED",
+      actor: "system",
+      detail: res.ok
+        ? `署名依頼メールを送信: ${signer.email}`
+        : `メール送信失敗: ${signer.email}（${res.error ?? "不明なエラー"}）`,
+    });
+  }
+
   revalidatePath(`/contracts/${id}`);
   revalidatePath("/contracts");
+}
+
+// 1名の署名者へ署名依頼メールを再送する
+export async function resendSignEmailAction(signerId: string): Promise<void> {
+  const user = await requireUser();
+  const signer = await prisma.signer.findUnique({
+    where: { id: signerId },
+    include: { contract: true },
+  });
+  if (!signer) return;
+  if (!["SENT", "VIEWED"].includes(signer.contract.status)) return;
+
+  const res = await sendSignRequestEmail({
+    to: signer.email,
+    signerName: signer.name,
+    contractTitle: signer.contract.title,
+    signUrl: signUrlForToken(signer.token),
+  });
+  await recordAudit({
+    contractId: signer.contractId,
+    event: res.ok ? "EMAIL_SENT" : "EMAIL_FAILED",
+    actor: user.name,
+    detail: res.skipped
+      ? "メール未設定のため送信せず（URLを案内してください）"
+      : res.ok
+        ? `署名依頼メールを再送: ${signer.email}`
+        : `メール再送失敗: ${signer.email}（${res.error ?? "不明なエラー"}）`,
+    ipAddress: getClientIp(),
+  });
+  revalidatePath(`/contracts/${signer.contractId}`);
 }
 
 // 契約の取消

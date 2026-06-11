@@ -48,6 +48,12 @@ npm run build         # 本番ビルド（CIと同じ。DB不要で通ること�
 | `SEED_ADMIN_PASSWORD` | ✅ | 初期管理者のログインパスワード |
 | `SESSION_SECRET` | 推奨 | セッション署名鍵（未設定時はDATABASE_URLから導出） |
 | `APP_URL` | 任意 | 署名URL生成用（未設定時はVercel本番ドメイン） |
+| `RESEND_API_KEY` | 任意 | 署名依頼メール送信（Resend）。未設定時はメール送信せずURL案内のみ |
+| `MAIL_FROM` | 任意 | メール送信元（例 `名前 <addr@example.com>`）。未設定時はResendテスト送信元 |
+
+## メール送信
+- 署名依頼メールは `src/lib/email.ts`（Resend HTTP API）で送信。`fetch` のみで依存追加なし
+- `RESEND_API_KEY` 未設定なら送信せず `skipped` を返し、従来のURLコピー運用にフォールバック（fail-graceful）
 
 ## 画面構成
 - `/login` … 社内ログイン
