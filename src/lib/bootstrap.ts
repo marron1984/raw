@@ -38,6 +38,23 @@ async function tablesExist(): Promise<boolean> {
 const COLUMN_MIGRATIONS = [
   'ALTER TABLE "Contract" ADD COLUMN IF NOT EXISTS "driveFileId" TEXT',
   'ALTER TABLE "Contract" ADD COLUMN IF NOT EXISTS "driveSavedAt" TIMESTAMP(3)',
+  'ALTER TABLE "Contract" ADD COLUMN IF NOT EXISTS "explanationTitle" TEXT',
+  'ALTER TABLE "Contract" ADD COLUMN IF NOT EXISTS "explanationBody" TEXT',
+  `CREATE TABLE IF NOT EXISTS "Client" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "kana" TEXT,
+    "email" TEXT,
+    "phone" TEXT,
+    "address" TEXT,
+    "category" TEXT NOT NULL DEFAULT 'OTHER',
+    "note" TEXT,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "createdById" TEXT,
+    CONSTRAINT "Client_pkey" PRIMARY KEY ("id")
+  )`,
 ];
 
 async function run(): Promise<void> {

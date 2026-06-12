@@ -82,6 +82,16 @@ export default async function SignPage({
         </p>
       </div>
 
+      {contract.explanationBody && (
+        <>
+          <h2 style={{ fontSize: 16 }}>
+            {contract.explanationTitle ?? "重要事項説明書"}
+          </h2>
+          <div className="sign-doc">{contract.explanationBody}</div>
+          <h2 style={{ fontSize: 16 }}>契約書</h2>
+        </>
+      )}
+
       <div className="sign-doc">{contract.body}</div>
 
       {alreadySigned ? (
@@ -91,7 +101,11 @@ export default async function SignPage({
           </div>
         </div>
       ) : (
-        <SignForm token={params.token} signerName={signer.name} />
+        <SignForm
+          token={params.token}
+          signerName={signer.name}
+          hasExplanation={!!contract.explanationBody}
+        />
       )}
 
       <p className="muted" style={{ fontSize: 12, marginTop: 24, textAlign: "center" }}>

@@ -19,6 +19,7 @@ const signerSchema = z.object({
 
 const createSchema = z.object({
   templateId: z.string().min(1, "テンプレートを選択してください"),
+  explanationTemplateId: z.string().optional(),
   title: z.string().trim().min(1, "契約タイトルを入力してください"),
   fields: z.record(z.string()),
   signers: z.array(signerSchema).min(1, "署名者を1名以上入力してください"),
@@ -33,7 +34,8 @@ export async function createContractAction(
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0].message };
   }
-  const { templateId, title, fields, signers } = parsed.data;
+  const { templateId, explanationTemplateId, title, fields, signers } =
+    parsed.data;
 
   const template = await prisma.contractTemplate.findUnique({
     where: { id: templateId },
@@ -43,11 +45,26 @@ export async function createContractAction(
   // 本文へ値を差し込んでスナップショット化
   const body = renderTemplate(template.body, fields);
 
+  // 重要事項説明書（任意）。契約と同じ差し込み値を共用してスナップショット化
+  let explanationTitle: string | null = null;
+  let explanationBody: string | null = null;
+  if (explanationTemplateId) {
+    const exp = await prisma.contractTemplate.findUnique({
+      where: { id: explanationTemplateId },
+    });
+    if (exp) {
+      explanationTitle = exp.title;
+      explanationBody = renderTemplate(exp.body, fields);
+    }
+  }
+
   const contract = await prisma.contract.create({
     data: {
       title,
       category: template.category,
       body,
+      explanationTitle,
+      explanationBody,
       fields: JSON.stringify(fields),
       templateId: template.id,
       createdById: user.id,

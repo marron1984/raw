@@ -8,7 +8,7 @@ import { requireUser } from "@/lib/auth";
 
 const schema = z.object({
   title: z.string().trim().min(1, "タイトルを入力してください"),
-  category: z.enum(["RESIDENCE", "CARE", "OTHER"]),
+  category: z.enum(["RESIDENCE", "CARE", "EXPLANATION", "OTHER"]),
   description: z.string().trim().optional(),
   body: z.string().trim().min(1, "契約本文を入力してください"),
   isActive: z.boolean(),

@@ -32,6 +32,7 @@ export function renderTemplate(
 export const CATEGORY_LABELS: Record<string, string> = {
   RESIDENCE: "入居契約",
   CARE: "訪問介護利用契約",
+  EXPLANATION: "重要事項説明書",
   OTHER: "その他",
 };
 

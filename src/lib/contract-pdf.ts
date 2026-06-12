@@ -16,6 +16,8 @@ export async function renderContractPdf(
     title: contract.title,
     categoryLabel: CATEGORY_LABELS[contract.category] ?? contract.category,
     body: contract.body,
+    explanationTitle: contract.explanationTitle,
+    explanationBody: contract.explanationBody,
     contractId: contract.id,
     createdAt: contract.createdAt,
     completedAt: contract.completedAt,

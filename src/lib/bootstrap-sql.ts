@@ -40,6 +40,8 @@ CREATE TABLE "Contract" (
     "body" TEXT NOT NULL,
     "fields" TEXT NOT NULL DEFAULT '{}',
     "status" TEXT NOT NULL DEFAULT 'DRAFT',
+    "explanationTitle" TEXT,
+    "explanationBody" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "sentAt" TIMESTAMP(3),
@@ -84,6 +86,24 @@ CREATE TABLE "AuditLog" (
     "contractId" TEXT NOT NULL,
 
     CONSTRAINT "AuditLog_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Client" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "kana" TEXT,
+    "email" TEXT,
+    "phone" TEXT,
+    "address" TEXT,
+    "category" TEXT NOT NULL DEFAULT 'OTHER',
+    "note" TEXT,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "createdById" TEXT,
+
+    CONSTRAINT "Client_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex

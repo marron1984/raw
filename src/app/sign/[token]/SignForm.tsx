@@ -21,9 +21,11 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
 export function SignForm({
   token,
   signerName,
+  hasExplanation = false,
 }: {
   token: string;
   signerName: string;
+  hasExplanation?: boolean;
 }) {
   const action = signAction.bind(null, token);
   const [state, formAction] = useFormState(action, {});
@@ -61,7 +63,9 @@ export function SignForm({
           onChange={(e) => setAgreed(e.target.checked)}
         />
         <label htmlFor="agree" style={{ margin: 0 }}>
-          契約内容を確認し、これに同意します。本操作が電子的な署名であることを承諾します。
+          {hasExplanation
+            ? "重要事項説明書の説明を受け、契約内容を確認し、これに同意します。本操作が電子的な署名であることを承諾します。"
+            : "契約内容を確認し、これに同意します。本操作が電子的な署名であることを承諾します。"}
         </label>
       </div>
 

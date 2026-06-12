@@ -9,12 +9,13 @@ export { isDriveConfigured };
 // 未設定時は何もせず skipped を返す。失敗しても例外は投げない。
 export async function saveContractToDrive(
   contractId: string,
-  actor: string
+  actor: string,
+  prebuilt?: { bytes: Uint8Array; filename: string }
 ): Promise<{ ok: boolean; skipped?: boolean; error?: string }> {
   if (!isDriveConfigured()) return { ok: false, skipped: true };
 
   try {
-    const pdf = await renderContractPdf(contractId);
+    const pdf = prebuilt ?? (await renderContractPdf(contractId));
     if (!pdf) return { ok: false, error: "契約が見つかりません" };
 
     const res = await uploadPdfToDrive({

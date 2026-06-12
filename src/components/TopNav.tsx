@@ -12,6 +12,7 @@ export function TopNav({ user }: { user: SessionUser }) {
         <nav className="nav">
           <Link href="/dashboard">ダッシュボード</Link>
           <Link href="/contracts">契約</Link>
+          <Link href="/clients">相手先</Link>
           <Link href="/templates">テンプレート</Link>
           {user.role === "ADMIN" && <Link href="/users">ユーザー</Link>}
         </nav>

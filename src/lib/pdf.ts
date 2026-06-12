@@ -33,6 +33,9 @@ export type ContractPdfInput = {
   title: string;
   categoryLabel: string;
   body: string;
+  // 重要事項説明書（任意）。あれば契約本文の前に別セクションで出力
+  explanationTitle?: string | null;
+  explanationBody?: string | null;
   signers: SignerSummary[];
   contractId: string;
   createdAt: Date;
@@ -135,6 +138,14 @@ export async function generateContractPdf(
     });
     y -= 12;
   };
+
+  // 重要事項説明書（あれば契約本文の前に別ページで出力）
+  if (input.explanationBody) {
+    draw(input.explanationTitle ?? "重要事項説明書", 16, { gap: 6 });
+    hr();
+    draw(input.explanationBody, 11, { gap: 16 });
+    newPage();
+  }
 
   // タイトル
   draw(input.title, 18, { gap: 4 });

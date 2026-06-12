@@ -13,6 +13,14 @@ type TemplateOption = {
   category: string;
 };
 
+type ClientOption = {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+};
+
 // プレースホルダのキーを日本語ラベルへ（無ければキーをそのまま表示）
 const FIELD_LABELS: Record<string, string> = {
   tenant_name: "借主氏名",
@@ -56,23 +64,36 @@ const FIELD_LABELS: Record<string, string> = {
 
 type Signer = { name: string; email: string };
 
-export function NewContractForm({ templates }: { templates: TemplateOption[] }) {
+export function NewContractForm({
+  templates,
+  explanationTemplates,
+  clients,
+}: {
+  templates: TemplateOption[];
+  explanationTemplates: TemplateOption[];
+  clients: ClientOption[];
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const [templateId, setTemplateId] = useState("");
+  const [explanationTemplateId, setExplanationTemplateId] = useState("");
   const [title, setTitle] = useState("");
-  const [keys, setKeys] = useState<string[]>([]);
+  const [contractKeys, setContractKeys] = useState<string[]>([]);
+  const [explanationKeys, setExplanationKeys] = useState<string[]>([]);
   const [fields, setFields] = useState<Record<string, string>>({});
   const [signers, setSigners] = useState<Signer[]>([{ name: "", email: "" }]);
   const [error, setError] = useState<string | null>(null);
   const [loadingTpl, setLoadingTpl] = useState(false);
 
+  // 契約＋重説の差し込み項目を結合（重複除去・出現順）
+  const keys = Array.from(new Set([...contractKeys, ...explanationKeys]));
+
   async function onTemplateChange(id: string) {
     setTemplateId(id);
     setFields({});
     if (!id) {
-      setKeys([]);
+      setContractKeys([]);
       return;
     }
     const tpl = templates.find((t) => t.id === id);
@@ -80,7 +101,38 @@ export function NewContractForm({ templates }: { templates: TemplateOption[] }) 
     setLoadingTpl(true);
     const res = await getTemplatePlaceholdersAction(id);
     setLoadingTpl(false);
-    setKeys(res?.keys ?? []);
+    setContractKeys(res?.keys ?? []);
+  }
+
+  async function onExplanationChange(id: string) {
+    setExplanationTemplateId(id);
+    if (!id) {
+      setExplanationKeys([]);
+      return;
+    }
+    const res = await getTemplatePlaceholdersAction(id);
+    setExplanationKeys(res?.keys ?? []);
+  }
+
+  // 相手先マスタから署名者・差し込み項目を補完
+  function applyClient(id: string) {
+    const c = clients.find((x) => x.id === id);
+    if (!c) return;
+    setSigners((prev) => {
+      const next = [...prev];
+      next[0] = { name: c.name, email: c.email ?? "" };
+      return next;
+    });
+    setFields((prev) => {
+      const next = { ...prev };
+      for (const k of keys) {
+        if (/^(user|tenant)_name$/.test(k)) next[k] = c.name;
+        else if (/^(user|tenant)_address$/.test(k) && c.address)
+          next[k] = c.address;
+        else if (/^(user|tenant)_phone$/.test(k) && c.phone) next[k] = c.phone;
+      }
+      return next;
+    });
   }
 
   function updateSigner(i: number, patch: Partial<Signer>) {
@@ -95,6 +147,7 @@ export function NewContractForm({ templates }: { templates: TemplateOption[] }) 
     startTransition(async () => {
       const res = await createContractAction({
         templateId,
+        explanationTemplateId: explanationTemplateId || undefined,
         title,
         fields,
         signers: signers
@@ -113,6 +166,28 @@ export function NewContractForm({ templates }: { templates: TemplateOption[] }) 
     <form onSubmit={onSubmit}>
       {error && <div className="alert error">{error}</div>}
 
+      {clients.length > 0 && (
+        <div className="panel">
+          <label htmlFor="client">相手先マスタから選択（任意）</label>
+          <select
+            id="client"
+            defaultValue=""
+            onChange={(e) => applyClient(e.target.value)}
+          >
+            <option value="">― 選択して署名者・項目を自動入力 ―</option>
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+                {c.email ? `（${c.email}）` : ""}
+              </option>
+            ))}
+          </select>
+          <p className="hint">
+            登録済みの相手先を選ぶと、署名者と住所・連絡先などを自動入力します（編集可）。
+          </p>
+        </div>
+      )}
+
       <div className="panel">
         <label htmlFor="template">テンプレート</label>
         <select
@@ -128,6 +203,27 @@ export function NewContractForm({ templates }: { templates: TemplateOption[] }) 
             </option>
           ))}
         </select>
+
+        {explanationTemplates.length > 0 && (
+          <>
+            <label htmlFor="explanation">重要事項説明書（任意）</label>
+            <select
+              id="explanation"
+              value={explanationTemplateId}
+              onChange={(e) => onExplanationChange(e.target.value)}
+            >
+              <option value="">― 添付しない ―</option>
+              {explanationTemplates.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.title}
+                </option>
+              ))}
+            </select>
+            <p className="hint">
+              選ぶと、契約と同じ差し込み内容で重要事項説明書を作成し、署名ページで契約と一緒に同意を取得します。
+            </p>
+          </>
+        )}
 
         <label htmlFor="title">契約タイトル</label>
         <input

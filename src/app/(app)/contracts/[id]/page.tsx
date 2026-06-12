@@ -33,6 +33,8 @@ const EVENT_LABELS: Record<string, string> = {
   EMAIL_FAILED: "メール送信失敗",
   DRIVE_SAVED: "ドライブ保存",
   DRIVE_FAILED: "ドライブ保存失敗",
+  COPY_SENT: "控え送付",
+  COPY_FAILED: "控え送付失敗",
 };
 
 function fmt(d: Date | null) {
@@ -241,6 +243,13 @@ export default async function ContractDetailPage({
       </div>
 
       {/* 契約本文 */}
+      {contract.explanationBody && (
+        <>
+          <h2>{contract.explanationTitle ?? "重要事項説明書"}</h2>
+          <div className="contract-body">{contract.explanationBody}</div>
+        </>
+      )}
+
       <h2>契約内容</h2>
       <div className="contract-body">{contract.body}</div>
 

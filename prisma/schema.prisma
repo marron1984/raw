@@ -62,6 +62,9 @@ model Contract {
   // 差し込み項目の値（JSON文字列）
   fields    String   @default("{}")
   status    String   @default("DRAFT") // DRAFT | SENT | VIEWED | SIGNED | DECLINED | CANCELLED
+  // 重要事項説明書（任意・契約と束ねて同意取得）
+  explanationTitle String?
+  explanationBody  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   sentAt    DateTime?
@@ -118,7 +121,7 @@ model Signer {
 // ─────────────────────────────────────────────
 model AuditLog {
   id        String   @id @default(cuid())
-  event     String // CREATED | SENT | VIEWED | SIGNED | DECLINED | CANCELLED | COMPLETED | PDF_GENERATED
+  event     String // CREATED | SENT | VIEWED | SIGNED | DECLINED | CANCELLED | COMPLETED | PDF_GENERATED | EMAIL_SENT | EMAIL_FAILED | DRIVE_SAVED | DRIVE_FAILED | COPY_SENT | COPY_FAILED
   actor     String // 操作者の表示名（職員名 or 署名者名 or system）
   detail    String?
   ipAddress String?
@@ -128,4 +131,22 @@ model AuditLog {
   contractId String
 
   @@index([contractId])
+}
+
+// ─────────────────────────────────────────────
+// 相手先マスタ（入居者・利用者など。契約作成時に使い回す）
+// ─────────────────────────────────────────────
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  kana      String?
+  email     String?
+  phone     String?
+  address   String?
+  category  String   @default("OTHER") // RESIDENCE | CARE | OTHER
+  note      String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdById String?
 }

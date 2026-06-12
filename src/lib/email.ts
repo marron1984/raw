@@ -86,3 +86,61 @@ export async function sendSignRequestEmail(params: {
     return { ok: false, error: String(e) };
   }
 }
+
+// 締結完了後、契約PDFを控えとして送付する（署名者・担当者向け）
+export async function sendCompletedCopyEmail(params: {
+  to: string;
+  recipientName: string;
+  contractTitle: string;
+  attachment: { filename: string; base64: string };
+}): Promise<SendResult> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return { ok: false, skipped: true };
+  const from =
+    process.env.MAIL_FROM ?? `${SENDER_NAME} <onboarding@resend.dev>`;
+
+  const name = escapeHtml(params.recipientName);
+  const title = escapeHtml(params.contractTitle);
+  const subject = `【電子契約】「${params.contractTitle}」締結完了のお知らせ（控え）`;
+
+  const text =
+    `${params.recipientName} 様\n\n` +
+    `「${params.contractTitle}」の電子契約が締結されました。\n` +
+    `本メールに締結済みの契約書PDF（控え）を添付いたします。大切に保管してください。\n\n` +
+    `${SENDER_NAME}`;
+
+  const html = `
+  <div style="font-family:sans-serif;line-height:1.8;color:#1f2933;max-width:560px">
+    <p>${name} 様</p>
+    <p>「${title}」の電子契約が締結されました。<br>
+    本メールに締結済みの契約書PDF（控え）を添付いたします。大切に保管してください。</p>
+    <hr style="border:none;border-top:1px solid #e2e6ea;margin:20px 0">
+    <p style="font-size:12px;color:#6b7785">${SENDER_NAME}</p>
+  </div>`;
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to: [params.to],
+        subject,
+        html,
+        text,
+        attachments: [
+          { filename: params.attachment.filename, content: params.attachment.base64 },
+        ],
+      }),
+    });
+    if (!res.ok) {
+      return { ok: false, error: `${res.status}: ${(await res.text()).slice(0, 300)}` };
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
