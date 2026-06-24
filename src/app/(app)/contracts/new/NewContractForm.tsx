@@ -60,6 +60,7 @@ const FIELD_LABELS: Record<string, string> = {
   contract_date: "契約締結年月日",
   agent_name: "代理人氏名",
   agent_address: "代理人住所",
+  agent_relation: "本人との続柄",
 };
 
 type Signer = { name: string; email: string };

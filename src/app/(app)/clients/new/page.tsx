@@ -1,6 +1,8 @@
 import { createClientAction } from "@/app/actions/clients";
 import { ClientForm } from "../ClientForm";
 
+export const dynamic = "force-dynamic";
+
 export default function NewClientPage() {
   return (
     <>
