@@ -1,5 +1,10 @@
 import type { PrismaClient, Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { KAIGO_JUSETSU_BODY, SHOGAI_JUSETSU_BODY } from "./seed-jusetsu";
+import {
+  CAREMGMT_KEIYAKU_BODY,
+  CAREMGMT_JUSETSU_BODY,
+} from "./seed-caremgmt";
 
 // PrismaClient とトランザクションクライアントの両方を受け取れるようにする
 type Db = PrismaClient | Prisma.TransactionClient;
@@ -692,5 +697,37 @@ export async function syncCoreData(db: Db): Promise<void> {
 同意年月日：{{contract_date}}
 入居者・利用者氏名：{{user_name}}
 代理人氏名：{{agent_name}}`,
+  });
+
+  // 重要事項説明書（訪問介護・障害居宅介護）— アップロード書類から整形
+  await ensureTemplate({
+    title: "重要事項説明書（訪問介護・料金表付き）",
+    category: "EXPLANATION",
+    description:
+      "訪問介護の重要事項説明書（事業所概要・職員体制・料金体系・加算等を含む詳細版）",
+    body: KAIGO_JUSETSU_BODY,
+  });
+
+  await ensureTemplate({
+    title: "重要事項説明書（障害・居宅介護）",
+    category: "EXPLANATION",
+    description: "障害福祉（居宅介護等）の重要事項説明書（詳細版）",
+    body: SHOGAI_JUSETSU_BODY,
+  });
+
+  // 居宅介護支援（ケアマネジメント）契約書・重要事項説明書
+  await ensureTemplate({
+    title: "居宅介護支援（ケアマネジメント）契約書",
+    category: "CAREPLAN",
+    description:
+      "指定居宅介護支援の利用契約書（全17条・電子契約条項付き／株式会社dhpケアマネジメント）",
+    body: CAREMGMT_KEIYAKU_BODY,
+  });
+
+  await ensureTemplate({
+    title: "重要事項説明書（居宅介護支援）",
+    category: "EXPLANATION",
+    description: "指定居宅介護支援の重要事項説明書（株式会社dhpケアマネジメント）",
+    body: CAREMGMT_JUSETSU_BODY,
   });
 }

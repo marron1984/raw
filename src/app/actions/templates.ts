@@ -11,6 +11,7 @@ const schema = z.object({
   category: z.enum([
     "RESIDENCE",
     "CARE",
+    "CAREPLAN",
     "DISABILITY",
     "EXPLANATION",
     "CONSENT",

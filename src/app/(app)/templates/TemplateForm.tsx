@@ -40,6 +40,7 @@ export function TemplateForm({ action, initial }: Props) {
       <select id="category" name="category" defaultValue={initial?.category ?? "OTHER"}>
         <option value="RESIDENCE">入居契約</option>
         <option value="CARE">訪問介護利用契約</option>
+        <option value="CAREPLAN">居宅介護支援（ケアマネ）</option>
         <option value="DISABILITY">障害福祉サービス契約</option>
         <option value="EXPLANATION">重要事項説明書</option>
         <option value="CONSENT">同意書</option>
