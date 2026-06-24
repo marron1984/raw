@@ -35,6 +35,7 @@ const FIELD_LABELS: Record<string, string> = {
   property_address: "物件所在地",
   room_no: "部屋番号",
   structure: "構造・面積",
+  area: "居室面積",
   rent: "賃料(円)",
   common_fee: "共益費(円)",
   management_fee: "管理費(円)",
