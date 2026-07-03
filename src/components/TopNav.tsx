@@ -1,8 +1,23 @@
-import Link from "next/link";
-import { logoutAction } from "@/app/actions/auth";
-import type { SessionUser } from "@/lib/auth";
+"use client";
 
-export function TopNav({ user }: { user: SessionUser }) {
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { logoutAction } from "@/app/actions/auth";
+
+type NavUser = { name: string; role: string };
+
+const LINKS = [
+  { href: "/dashboard", label: "ダッシュボード" },
+  { href: "/contracts", label: "契約" },
+  { href: "/clients", label: "相手先" },
+  { href: "/templates", label: "テンプレート" },
+];
+
+export function TopNav({ user }: { user: NavUser }) {
+  const pathname = usePathname();
+  const isActive = (href: string) =>
+    pathname === href || pathname.startsWith(href + "/");
+
   return (
     <div className="topbar">
       <div className="topbar-inner">
@@ -10,11 +25,23 @@ export function TopNav({ user }: { user: SessionUser }) {
           Dケア電子契約システム
         </Link>
         <nav className="nav">
-          <Link href="/dashboard">ダッシュボード</Link>
-          <Link href="/contracts">契約</Link>
-          <Link href="/clients">相手先</Link>
-          <Link href="/templates">テンプレート</Link>
-          {user.role === "ADMIN" && <Link href="/users">ユーザー</Link>}
+          {LINKS.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              className={isActive(l.href) ? "active" : undefined}
+            >
+              {l.label}
+            </Link>
+          ))}
+          {user.role === "ADMIN" && (
+            <Link
+              href="/users"
+              className={isActive("/users") ? "active" : undefined}
+            >
+              ユーザー
+            </Link>
+          )}
         </nav>
         <div className="user">
           <span>
