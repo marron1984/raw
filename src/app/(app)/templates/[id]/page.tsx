@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { ensureBootstrap } from "@/lib/bootstrap";
 import {
   updateTemplateAction,
   deleteTemplateAction,
@@ -13,6 +14,7 @@ export default async function EditTemplatePage({
 }: {
   params: { id: string };
 }) {
+  await ensureBootstrap();
   const template = await prisma.contractTemplate.findUnique({
     where: { id: params.id },
   });

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { ensureBootstrap } from "@/lib/bootstrap";
 import {
   sendContractAction,
   startSigningAction,
@@ -54,6 +55,7 @@ export default async function ContractDetailPage({
 }: {
   params: { id: string };
 }) {
+  await ensureBootstrap();
   const contract = await prisma.contract.findUnique({
     where: { id: params.id },
     include: {

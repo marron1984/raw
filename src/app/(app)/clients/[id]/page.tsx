@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { ensureBootstrap } from "@/lib/bootstrap";
 import { updateClientAction, deleteClientAction } from "@/app/actions/clients";
 import { ClientForm } from "../ClientForm";
 import { ContractStatusBadge } from "@/components/StatusBadge";
@@ -21,6 +22,7 @@ export default async function EditClientPage({
 }: {
   params: { id: string };
 }) {
+  await ensureBootstrap();
   const client = await prisma.client.findUnique({ where: { id: params.id } });
   if (!client) notFound();
 

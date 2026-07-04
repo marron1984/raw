@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { ensureBootstrap } from "@/lib/bootstrap";
 import {
   updateLocationAction,
   deleteLocationAction,
@@ -13,6 +14,7 @@ export default async function EditLocationPage({
 }: {
   params: { id: string };
 }) {
+  await ensureBootstrap();
   const location = await prisma.location.findUnique({
     where: { id: params.id },
   });

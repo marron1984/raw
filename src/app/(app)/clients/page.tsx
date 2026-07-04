@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 
+import { ensureBootstrap } from "@/lib/bootstrap";
 export const dynamic = "force-dynamic";
 
 const CLIENT_CATEGORY_LABELS: Record<string, string> = {
@@ -14,6 +15,7 @@ export default async function ClientsPage({
 }: {
   searchParams: { q?: string };
 }) {
+  await ensureBootstrap();
   const q = (searchParams.q ?? "").trim();
   const clients = await prisma.client.findMany({
     where: q

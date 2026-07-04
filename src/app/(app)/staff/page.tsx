@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { ensureBootstrap } from "@/lib/bootstrap";
 import { toggleStaffActiveAction } from "@/app/actions/staff";
 
 export const dynamic = "force-dynamic";
 
 export default async function StaffPage() {
+  await ensureBootstrap();
   const staff = await prisma.staff.findMany({ orderBy: { createdAt: "asc" } });
 
   return (

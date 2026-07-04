@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 
+import { ensureBootstrap } from "@/lib/bootstrap";
 export const dynamic = "force-dynamic";
 
 export default async function LocationsPage() {
+  await ensureBootstrap();
   const locations = await prisma.location.findMany({
     orderBy: { createdAt: "asc" },
   });

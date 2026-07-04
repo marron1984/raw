@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { ensureBootstrap } from "@/lib/bootstrap";
 import { ContractStatusBadge } from "@/components/StatusBadge";
 import { CATEGORY_LABELS } from "@/lib/template";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
+  await ensureBootstrap();
   const [total, draft, sent, signed, recent] = await Promise.all([
     prisma.contract.count(),
     prisma.contract.count({ where: { status: "DRAFT" } }),

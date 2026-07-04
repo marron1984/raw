@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { ensureBootstrap } from "@/lib/bootstrap";
 import { ContractStatusBadge } from "@/components/StatusBadge";
 import { CATEGORY_LABELS, STATUS_LABELS } from "@/lib/template";
 
@@ -12,6 +13,7 @@ export default async function ContractsPage({
 }: {
   searchParams: { q?: string; status?: string };
 }) {
+  await ensureBootstrap();
   const q = (searchParams.q ?? "").trim();
   const status = (searchParams.status ?? "").trim();
 

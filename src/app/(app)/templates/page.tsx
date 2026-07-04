@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { ensureBootstrap } from "@/lib/bootstrap";
 import { CATEGORY_LABELS } from "@/lib/template";
 
 export const dynamic = "force-dynamic";
 
 export default async function TemplatesPage() {
+  await ensureBootstrap();
   const templates = await prisma.contractTemplate.findMany({
     orderBy: { updatedAt: "desc" },
     include: { _count: { select: { contracts: true } } },

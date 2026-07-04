@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { ensureBootstrap } from "@/lib/bootstrap";
 import { updateStaffAction, deleteStaffAction } from "@/app/actions/staff";
 import { StaffForm } from "../StaffForm";
 
@@ -10,6 +11,7 @@ export default async function EditStaffPage({
 }: {
   params: { id: string };
 }) {
+  await ensureBootstrap();
   const staff = await prisma.staff.findUnique({ where: { id: params.id } });
   if (!staff) notFound();
 

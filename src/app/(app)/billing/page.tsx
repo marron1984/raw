@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { ensureBootstrap } from "@/lib/bootstrap";
 import { BillingForm } from "./BillingForm";
 
 export const dynamic = "force-dynamic";
@@ -9,6 +10,7 @@ export default async function BillingPage({
 }: {
   searchParams?: Record<string, string | string[] | undefined>;
 }) {
+  await ensureBootstrap();
   const locationRows = await prisma.location.findMany({
     where: { isActive: true },
     orderBy: { createdAt: "asc" },

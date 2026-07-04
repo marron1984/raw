@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { ensureBootstrap } from "@/lib/bootstrap";
 import { DOC_SETS } from "@/lib/doc-sets";
 import { extractPlaceholders } from "@/lib/template";
 import { NewSetForm } from "./NewSetForm";
@@ -7,6 +8,7 @@ import { NewSetForm } from "./NewSetForm";
 export const dynamic = "force-dynamic";
 
 export default async function NewContractSetPage() {
+  await ensureBootstrap();
   const [templates, clients, staffList, locationRows] = await Promise.all([
     prisma.contractTemplate.findMany({
       where: { isActive: true },
