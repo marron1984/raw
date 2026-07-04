@@ -6,7 +6,7 @@ import {
   createContractAction,
   getTemplatePlaceholdersAction,
 } from "@/app/actions/contracts";
-import { FIELD_LABELS } from "@/lib/field-labels";
+import { FIELD_LABELS, defaultsFor } from "@/lib/field-labels";
 
 type TemplateOption = {
   id: string;
@@ -67,7 +67,10 @@ export function NewContractForm({
     setLoadingTpl(true);
     const res = await getTemplatePlaceholdersAction(id);
     setLoadingTpl(false);
-    setContractKeys(res?.keys ?? []);
+    const newKeys = res?.keys ?? [];
+    setContractKeys(newKeys);
+    // 固定情報の初期値を未入力キーへ自動入力
+    setFields((prev) => ({ ...defaultsFor(newKeys), ...prev }));
   }
 
   async function onExplanationChange(id: string) {
@@ -77,7 +80,9 @@ export function NewContractForm({
       return;
     }
     const res = await getTemplatePlaceholdersAction(id);
-    setExplanationKeys(res?.keys ?? []);
+    const newKeys = res?.keys ?? [];
+    setExplanationKeys(newKeys);
+    setFields((prev) => ({ ...defaultsFor(newKeys), ...prev }));
   }
 
   // 相手先マスタから署名者・差し込み項目を補完

@@ -40,3 +40,32 @@ export const FIELD_LABELS: Record<string, string> = {
   agent_address: "代理人住所",
   agent_relation: "本人との続柄",
 };
+
+// Excel（入居セット等）に記入されていた固定情報を初期値として自動入力する。
+// 物件や条件が異なる場合は作成画面でそのまま編集できる。
+export const DEFAULT_FIELD_VALUES: Record<string, string> = {
+  property_name: "いいすまい塚本（パシフィック塚本）",
+  property_address: "大阪市西淀川区野里一丁目32-14",
+  structure: "鉄骨造7階建 総戸数96戸・面積15.21㎡（但し造作一式付）",
+  area: "15.21㎡",
+  rent: "40,000",
+  common_fee: "5,000",
+  management_fee: "5,000",
+  water_fee: "2,000",
+  monthly_total: "52,000",
+  fire_insurance: "22,000",
+  reikin: "160,000",
+  bank_info:
+    "GMOあおぞらネット銀行 法人営業部 普通2604720 ｶ)ﾃﾞｨｰｴｯﾁﾋﾟｰｹｱﾏﾈｼﾞﾒﾝﾄ",
+  key_count: "1",
+  office_name: "いいかいご",
+};
+
+// 指定キーに対する初期値を返す（定義があるものだけ）
+export function defaultsFor(keys: string[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const k of keys) {
+    if (DEFAULT_FIELD_VALUES[k] !== undefined) out[k] = DEFAULT_FIELD_VALUES[k];
+  }
+  return out;
+}

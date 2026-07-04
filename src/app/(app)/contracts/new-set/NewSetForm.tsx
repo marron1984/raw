@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createContractSetAction } from "@/app/actions/contracts";
-import { FIELD_LABELS } from "@/lib/field-labels";
+import { FIELD_LABELS, defaultsFor } from "@/lib/field-labels";
 
 type SetOption = {
   key: string;
@@ -103,8 +103,11 @@ export function NewSetForm({
           id="set"
           value={setKey}
           onChange={(e) => {
-            setSetKey(e.target.value);
-            setFields({});
+            const key = e.target.value;
+            setSetKey(key);
+            // 固定情報（物件住所・金額・口座など）を初期値として自動入力
+            const newKeys = sets.find((x) => x.key === key)?.keys ?? [];
+            setFields(defaultsFor(newKeys));
           }}
           required
         >
