@@ -12,6 +12,8 @@ export function SignaturePad({ onChange }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const last = useRef<{ x: number; y: number } | null>(null);
+  // 短いストロークでも取りこぼさないよう、state と別に ref でも保持する
+  const inkRef = useRef(false);
   const [hasInk, setHasInk] = useState(false);
 
   // 高解像度ディスプレイでもくっきり描画されるよう devicePixelRatio に合わせる
@@ -55,7 +57,10 @@ export function SignaturePad({ onChange }: Props) {
     ctx.lineTo(p.x, p.y);
     ctx.stroke();
     last.current = p;
-    if (!hasInk) setHasInk(true);
+    if (!inkRef.current) {
+      inkRef.current = true;
+      setHasInk(true);
+    }
   }
 
   function end(e: React.PointerEvent<HTMLCanvasElement>) {
@@ -63,7 +68,7 @@ export function SignaturePad({ onChange }: Props) {
     drawing.current = false;
     last.current = null;
     const canvas = canvasRef.current;
-    if (canvas && hasInk) {
+    if (canvas && inkRef.current) {
       onChange(canvas.toDataURL("image/png"));
     }
   }
@@ -74,12 +79,13 @@ export function SignaturePad({ onChange }: Props) {
     if (canvas && ctx) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
+    inkRef.current = false;
     setHasInk(false);
     onChange("");
   }
 
   return (
-    <div>
+    <div className="sign-pad-wrap">
       <canvas
         ref={canvasRef}
         className="sign-pad"
@@ -88,6 +94,8 @@ export function SignaturePad({ onChange }: Props) {
         onPointerUp={end}
         onPointerCancel={end}
         onPointerLeave={end}
+        // 長押しでの選択メニュー・コンテキストメニューが出ないようにする
+        onContextMenu={(e) => e.preventDefault()}
       />
       <div
         style={{
