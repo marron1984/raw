@@ -11,6 +11,7 @@ import { generateSignToken } from "@/lib/token";
 import { sendSignRequestEmail } from "@/lib/email";
 import { signUrlForToken } from "@/lib/url";
 import { saveContractToDrive } from "@/lib/drive-save";
+import { getDocSet } from "@/lib/doc-sets";
 
 const signerSchema = z.object({
   name: z.string().trim().min(1),
@@ -180,6 +181,100 @@ export async function saveToDriveAction(id: string): Promise<void> {
   if (!contract || contract.status !== "SIGNED") return;
   await saveContractToDrive(id, contract.staffName ?? "職員");
   revalidatePath(`/contracts/${id}`);
+}
+
+
+const createSetSchema = z.object({
+  setKey: z.string().min(1, "書類セットを選択してください"),
+  staffId: z.string().optional(),
+  fields: z.record(z.string()),
+  signer: signerSchema,
+});
+
+// 書類セットの一括作成（共通の差し込み値でセット内の全書類を下書き作成）
+export async function createContractSetAction(
+  payload: unknown
+): Promise<
+  | { ok: true; ids: string[]; count: number }
+  | { ok: false; error: string }
+> {
+  requireAuth();
+  const parsed = createSetSchema.safeParse(payload);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0].message };
+  }
+  const { setKey, staffId, fields, signer } = parsed.data;
+
+  const set = getDocSet(setKey);
+  if (!set) return { ok: false, error: "書類セットが見つかりません。" };
+
+  const staff = staffId
+    ? await prisma.staff.findUnique({ where: { id: staffId } })
+    : null;
+
+  // セットで使う全テンプレートをタイトルで取得
+  const titles = Array.from(
+    new Set(
+      set.items.flatMap((i) =>
+        i.explanationTitle ? [i.templateTitle, i.explanationTitle] : [i.templateTitle]
+      )
+    )
+  );
+  const templates = await prisma.contractTemplate.findMany({
+    where: { title: { in: titles }, isActive: true },
+  });
+  const byTitle = new Map(templates.map((t) => [t.title, t]));
+  const missing = titles.filter((t) => !byTitle.has(t));
+  if (missing.length > 0) {
+    return {
+      ok: false,
+      error: `テンプレートが見つかりません: ${missing.join("、")}`,
+    };
+  }
+
+  const ids: string[] = [];
+  for (const item of set.items) {
+    const tpl = byTitle.get(item.templateTitle)!;
+    const exp = item.explanationTitle
+      ? byTitle.get(item.explanationTitle)!
+      : null;
+
+    const contract = await prisma.contract.create({
+      data: {
+        title: `${tpl.title}（${signer.name} 様）`,
+        category: tpl.category,
+        body: renderTemplate(tpl.body, fields),
+        explanationTitle: exp?.title ?? null,
+        explanationBody: exp ? renderTemplate(exp.body, fields) : null,
+        fields: JSON.stringify(fields),
+        templateId: tpl.id,
+        staffName: staff?.name ?? null,
+        staffEmail: staff?.email ?? null,
+        status: "DRAFT",
+        signers: {
+          create: [
+            {
+              name: signer.name,
+              email: signer.email,
+              order: 1,
+              token: generateSignToken(),
+            },
+          ],
+        },
+      },
+    });
+    await recordAudit({
+      contractId: contract.id,
+      event: "CREATED",
+      actor: staff?.name ?? "職員",
+      detail: `書類セット「${set.label}」から作成`,
+      ipAddress: getClientIp(),
+    });
+    ids.push(contract.id);
+  }
+
+  revalidatePath("/contracts");
+  return { ok: true, ids, count: ids.length };
 }
 
 // 契約の取消

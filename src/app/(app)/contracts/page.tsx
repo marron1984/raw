@@ -37,9 +37,14 @@ export default async function ContractsPage({
     <>
       <div className="page-head">
         <h1>契約一覧</h1>
-        <Link href="/contracts/new" className="btn">
-          ＋ 新規契約を作成
-        </Link>
+        <div className="btn-row">
+          <Link href="/contracts/new-set" className="btn secondary">
+            📚 セットで一括作成
+          </Link>
+          <Link href="/contracts/new" className="btn">
+            ＋ 新規契約を作成
+          </Link>
+        </div>
       </div>
 
       <form method="get" className="panel" style={{ marginTop: 12 }}>

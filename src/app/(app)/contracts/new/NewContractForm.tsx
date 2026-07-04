@@ -6,6 +6,7 @@ import {
   createContractAction,
   getTemplatePlaceholdersAction,
 } from "@/app/actions/contracts";
+import { FIELD_LABELS } from "@/lib/field-labels";
 
 type TemplateOption = {
   id: string;
@@ -23,48 +24,6 @@ type ClientOption = {
   address: string | null;
 };
 
-// プレースホルダのキーを日本語ラベルへ（無ければキーをそのまま表示）
-const FIELD_LABELS: Record<string, string> = {
-  tenant_name: "借主氏名",
-  tenant_address: "借主住所",
-  tenant_phone: "借主連絡先",
-  tenant_workplace: "借主勤務先",
-  guarantor_name: "連帯保証人氏名",
-  guarantor_address: "連帯保証人住所",
-  guarantor_phone: "連帯保証人連絡先",
-  guarantor_relation: "続柄",
-  property_name: "物件名称",
-  property_address: "物件所在地",
-  room_no: "部屋番号",
-  structure: "構造・面積",
-  area: "居室面積",
-  rent: "賃料(円)",
-  common_fee: "共益費(円)",
-  management_fee: "管理費(円)",
-  water_fee: "水道料金(円)",
-  monthly_total: "月額合計(円)",
-  reikin: "礼金(円)",
-  fire_insurance: "火災保険料(円)",
-  bank_info: "振込先口座",
-  deposit: "敷金(円)",
-  key_number: "鍵番号",
-  key_count: "鍵の本数",
-  handover_date: "受渡日",
-  start_date: "開始日",
-  end_date: "終了日",
-  user_name: "利用者氏名",
-  birth_date: "生年月日",
-  user_address: "利用者住所",
-  user_phone: "利用者連絡先",
-  insurance_no: "被保険者番号",
-  service_type: "サービス種別",
-  schedule: "利用曜日・時間",
-  office_name: "担当事業所",
-  contract_date: "契約締結年月日",
-  agent_name: "代理人氏名",
-  agent_address: "代理人住所",
-  agent_relation: "本人との続柄",
-};
 
 type Signer = { name: string; email: string };
 
