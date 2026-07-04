@@ -98,9 +98,42 @@ const COLUMN_MIGRATIONS = [
   )`,
 ];
 
+// スキーマ or 初期データ（seed-core / COLUMN_MIGRATIONS）を変更したら必ず更新する。
+// このバージョンがDBに記録済みなら、重い同期処理（マイグレーション＋テンプレ同期の
+// 約30回のDB往復）をスキップし、起動を高速化する。
+const BOOTSTRAP_VERSION = "2026-07-04-a";
+
+// 初期化バージョンを記録する軽量テーブルを用意し、現在の記録値を返す
+async function readBootstrapVersion(): Promise<string | null> {
+  try {
+    const rows = await prisma.$queryRaw<{ value: string }[]>`
+      SELECT "value" FROM "AppMeta" WHERE "key" = 'bootstrap_version'
+    `;
+    return rows[0]?.value ?? null;
+  } catch {
+    // AppMeta 未作成（初回）
+    return null;
+  }
+}
+
+async function writeBootstrapVersion(): Promise<void> {
+  await prisma.$executeRawUnsafe(
+    `CREATE TABLE IF NOT EXISTS "AppMeta" ("key" TEXT PRIMARY KEY, "value" TEXT NOT NULL)`
+  );
+  await prisma.$executeRawUnsafe(
+    `INSERT INTO "AppMeta" ("key", "value") VALUES ('bootstrap_version', $1)
+     ON CONFLICT ("key") DO UPDATE SET "value" = $1`,
+    BOOTSTRAP_VERSION
+  );
+}
+
 async function run(): Promise<void> {
   // 再開直後の一時的な接続拒否を待つ（数回リトライ）
   await waitForDb();
+
+  // 初期化済み（同一バージョン）なら、重い同期処理を丸ごとスキップして高速起動
+  if ((await readBootstrapVersion()) === BOOTSTRAP_VERSION) return;
+
   if (!(await tablesExist())) {
     // 複数インスタンスが同時に初期化しないようアドバイザリロックで直列化。
     // （Supabase Session pooler はセッション中は同一バックエンドに固定されるため
@@ -126,4 +159,7 @@ async function run(): Promise<void> {
   }
   // 初期管理者・標準テンプレートを同期（冪等）
   await syncCoreData(prisma);
+
+  // 完了を記録。次回以降のコールドスタートはこの処理をスキップする
+  await writeBootstrapVersion();
 }
