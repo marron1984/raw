@@ -10,20 +10,47 @@ import { buildInitialCostItems, parseAmount, totalOf, yen } from "@/lib/billing"
 
 type LocationOption = { id: string; name: string; fields: Record<string, string> };
 
-export function BillingForm({ locations }: { locations: LocationOption[] }) {
+// 入居セット作成画面などから引き継ぐ初期値
+type BillingInitial = {
+  name?: string;
+  room?: string;
+  moveIn?: string;
+  due?: string;
+  property?: string;
+  rent?: string;
+  fire?: string;
+  reikin?: string;
+  bank?: string;
+};
+
+export function BillingForm({
+  locations,
+  initial,
+}: {
+  locations: LocationOption[];
+  initial?: BillingInitial;
+}) {
   const [locationId, setLocationId] = useState("");
   const [planKey, setPlanKey] = useState(PAYMENT_PLANS[0].key);
-  const [name, setName] = useState("");
-  const [room, setRoom] = useState("");
-  const [moveIn, setMoveIn] = useState("");
-  const [due, setDue] = useState("");
+  const [name, setName] = useState(initial?.name ?? "");
+  const [room, setRoom] = useState(initial?.room ?? "");
+  const [moveIn, setMoveIn] = useState(initial?.moveIn ?? "");
+  const [due, setDue] = useState(initial?.due ?? initial?.moveIn ?? "");
   const [property, setProperty] = useState(
-    DEFAULT_FIELD_VALUES.property_name ?? ""
+    initial?.property || DEFAULT_FIELD_VALUES.property_name || ""
   );
-  const [rent, setRent] = useState(DEFAULT_FIELD_VALUES.rent ?? "");
-  const [fire, setFire] = useState(DEFAULT_FIELD_VALUES.fire_insurance ?? "");
-  const [reikin, setReikin] = useState(DEFAULT_FIELD_VALUES.reikin ?? "");
-  const [bank, setBank] = useState(DEFAULT_FIELD_VALUES.bank_info ?? "");
+  const [rent, setRent] = useState(
+    initial?.rent || DEFAULT_FIELD_VALUES.rent || ""
+  );
+  const [fire, setFire] = useState(
+    initial?.fire || DEFAULT_FIELD_VALUES.fire_insurance || ""
+  );
+  const [reikin, setReikin] = useState(
+    initial?.reikin || DEFAULT_FIELD_VALUES.reikin || ""
+  );
+  const [bank, setBank] = useState(
+    initial?.bank || DEFAULT_FIELD_VALUES.bank_info || ""
+  );
   const [error, setError] = useState<string | null>(null);
 
   // 拠点・支払区分から基準金額を求める（拠点値 > 既定値、礼金は支払区分の差分を適用）

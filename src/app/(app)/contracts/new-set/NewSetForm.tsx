@@ -137,7 +137,27 @@ export function NewSetForm({
         signer: { name: signerName.trim(), email: signerEmail.trim() },
       });
       if (res.ok) {
-        router.push(`/contracts?q=${encodeURIComponent(signerName.trim())}`);
+        if (setKey === "nyukyo") {
+          // 入居セットは、続けて初期費用の見積書・請求書を発行できるよう
+          // 入力済みの部屋番号・入居日・金額を引き継いで見積・請求画面へ
+          const params = new URLSearchParams({
+            created: String(res.count),
+            name: signerName.trim(),
+          });
+          const carry: [string, string | undefined][] = [
+            ["room", fields.room_no],
+            ["moveIn", dateValueToIso(fields.start_date ?? "")],
+            ["property", fields.property_name],
+            ["rent", fields.rent],
+            ["fire", fields.fire_insurance],
+            ["reikin", fields.reikin],
+            ["bank", fields.bank_info],
+          ];
+          for (const [k, v] of carry) if (v) params.set(k, v);
+          router.push(`/billing?${params.toString()}`);
+        } else {
+          router.push(`/contracts?q=${encodeURIComponent(signerName.trim())}`);
+        }
       } else {
         setError(res.error);
       }
