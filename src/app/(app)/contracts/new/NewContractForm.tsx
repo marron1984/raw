@@ -6,7 +6,13 @@ import {
   createContractAction,
   getTemplatePlaceholdersAction,
 } from "@/app/actions/contracts";
-import { FIELD_LABELS, defaultsFor } from "@/lib/field-labels";
+import {
+  FIELD_LABELS,
+  defaultsFor,
+  isDateField,
+  dateValueToIso,
+  isoToJapaneseDate,
+} from "@/lib/field-labels";
 
 type TemplateOption = {
   id: string;
@@ -281,14 +287,29 @@ export function NewContractForm({
               {keys.map((k) => (
                 <div key={k}>
                   <label htmlFor={`f_${k}`}>{FIELD_LABELS[k] ?? k}</label>
-                  <input
-                    id={`f_${k}`}
-                    type="text"
-                    value={fields[k] ?? ""}
-                    onChange={(e) =>
-                      setFields((prev) => ({ ...prev, [k]: e.target.value }))
-                    }
-                  />
+                  {isDateField(k) ? (
+                    // カレンダーで選択し、契約書へは「2026年7月4日」表記で差し込む
+                    <input
+                      id={`f_${k}`}
+                      type="date"
+                      value={dateValueToIso(fields[k] ?? "")}
+                      onChange={(e) =>
+                        setFields((prev) => ({
+                          ...prev,
+                          [k]: isoToJapaneseDate(e.target.value),
+                        }))
+                      }
+                    />
+                  ) : (
+                    <input
+                      id={`f_${k}`}
+                      type="text"
+                      value={fields[k] ?? ""}
+                      onChange={(e) =>
+                        setFields((prev) => ({ ...prev, [k]: e.target.value }))
+                      }
+                    />
+                  )}
                 </div>
               ))}
             </div>

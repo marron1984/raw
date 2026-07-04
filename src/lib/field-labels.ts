@@ -61,6 +61,27 @@ export const DEFAULT_FIELD_VALUES: Record<string, string> = {
   office_name: "いいかいご",
 };
 
+// 日付系のキー（作成フォームでカレンダー入力にする）
+export function isDateField(key: string): boolean {
+  return /_date$/.test(key);
+}
+
+// 「2026年7月4日」「2026/7/4」「2026-07-04」→ input type="date" 用のISO表記
+export function dateValueToIso(value: string): string {
+  const m = value
+    .trim()
+    .match(/^(\d{4})[年/\-](\d{1,2})[月/\-](\d{1,2})日?$/);
+  if (!m) return "";
+  return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+}
+
+// ISO表記 → 契約書に差し込む日本語表記（2026年7月4日）
+export function isoToJapaneseDate(iso: string): string {
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return "";
+  return `${Number(m[1])}年${Number(m[2])}月${Number(m[3])}日`;
+}
+
 // 指定キーに対する初期値を返す（定義があるものだけ）
 export function defaultsFor(keys: string[]): Record<string, string> {
   const out: Record<string, string> = {};
