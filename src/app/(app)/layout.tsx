@@ -12,12 +12,12 @@ export default async function AppLayout({
 
   // 初回アクセス時にDBを自動セットアップ。
   // 失敗時はリダイレクトせず、原因が分かるエラー画面を表示する
-  let dbError = false;
+  let dbError: string | null = null;
   try {
     await ensureBootstrap();
   } catch (e) {
     console.error("app layout: db error:", e);
-    dbError = true;
+    dbError = e instanceof Error ? e.message : String(e);
   }
 
   if (dbError) {
@@ -34,6 +34,22 @@ export default async function AppLayout({
             ・再開しても直らない場合は、Vercel の環境変数 DATABASE_URL
             の設定を確認してください。
           </div>
+          <details className="panel" style={{ marginTop: 12 }}>
+            <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+              エラーの詳細（サポート用）
+            </summary>
+            <pre
+              style={{
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+                fontSize: 12,
+                marginTop: 10,
+                color: "var(--muted)",
+              }}
+            >
+              {dbError}
+            </pre>
+          </details>
         </main>
       </>
     );

@@ -25,6 +25,23 @@ export function ensureBootstrap(): Promise<void> {
   return bootstrapPromise;
 }
 
+// Supabase（無料プラン）の再開直後は、ダッシュボードが Healthy でも
+// 数秒間コネクションを拒否することがある。最初の疎通を数回リトライして待つ。
+async function waitForDb(): Promise<void> {
+  const delays = [0, 800, 1600, 2400, 3200];
+  let lastErr: unknown = null;
+  for (const d of delays) {
+    if (d > 0) await new Promise((r) => setTimeout(r, d));
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      return;
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr;
+}
+
 async function tablesExist(): Promise<boolean> {
   const rows = await prisma.$queryRaw<{ r: string | null }[]>`
     SELECT to_regclass('public."User"')::text AS r
@@ -82,6 +99,8 @@ const COLUMN_MIGRATIONS = [
 ];
 
 async function run(): Promise<void> {
+  // 再開直後の一時的な接続拒否を待つ（数回リトライ）
+  await waitForDb();
   if (!(await tablesExist())) {
     // 複数インスタンスが同時に初期化しないようアドバイザリロックで直列化。
     // （Supabase Session pooler はセッション中は同一バックエンドに固定されるため
