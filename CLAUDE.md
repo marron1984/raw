@@ -22,8 +22,10 @@
   既存DBへの変更はマイグレーション方針を別途検討すること
 
 ### 3. PDFの日本語フォント
-- `src/assets/fonts/NotoSansJP-Regular.ttf`（glyf形式TTF）を **subset:false（全体埋め込み）** で使用
+- `src/assets/fonts/NotoSansJP-Regular.ttf`（glyf形式TTF・**GSUBテーブル除去済み**）を **subset:false（全体埋め込み）** で使用
 - OTF(CFF)やsubset:trueに変えてはいけない（pdf-libの不具合で日本語が表示されなくなる）
+- GSUB入りの元フォントに戻してもいけない（fontkitがLatin文字で始まる行の数字を
+  全角幅で描画し文字間が異常に空く。除去は fontTools で `del font["GSUB"]` → save）
 
 ### 4. セキュリティ（fail-closed）
 - 認証は共通パスワード方式（`APP_PASSCODE`）。個別アカウントは廃止済み

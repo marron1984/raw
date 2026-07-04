@@ -669,3 +669,85 @@ tbody tr:last-child td {
   background: #fff;
   padding: 6px;
 }
+
+/* ───────── 印刷（A4）─────────
+   契約詳細・署名ページをブラウザから印刷したとき、A4にきれいに収まるよう
+   ナビ・ボタン類を隠し、本文を印刷向けの文字サイズに調整する */
+@page {
+  size: A4;
+  margin: 16mm 15mm;
+}
+@media print {
+  body {
+    background: #fff;
+    color: #111;
+    font-size: 10.5pt;
+  }
+  /* 画面操作用の要素は印刷しない */
+  .topbar,
+  .btn,
+  .btn-row,
+  button,
+  .alert,
+  .hint,
+  .copy-url,
+  .sign-pad,
+  form {
+    display: none !important;
+  }
+  .container,
+  .sign-wrap {
+    max-width: none;
+    padding: 0;
+    margin: 0;
+  }
+  .panel,
+  .contract-body,
+  .sign-doc,
+  .consent-box,
+  .signer-card {
+    box-shadow: none;
+    border: none;
+    background: #fff;
+    padding: 0;
+    margin: 0 0 12pt;
+  }
+  h1 {
+    font-size: 14pt;
+    text-align: center;
+    margin: 0 0 10pt;
+  }
+  h2 {
+    font-size: 11.5pt;
+    margin: 14pt 0 6pt;
+    break-after: avoid;
+  }
+  .contract-body,
+  .sign-doc {
+    font-size: 10.5pt;
+    line-height: 1.9;
+  }
+  .kv {
+    font-size: 9.5pt;
+  }
+  table {
+    font-size: 8.5pt;
+  }
+  th,
+  td {
+    padding: 4pt 6pt;
+  }
+  .signer-card {
+    break-inside: avoid;
+    border: 0.5pt solid #bbb;
+    padding: 8pt;
+  }
+  .signature-view {
+    max-width: 45mm;
+    max-height: 20mm;
+  }
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
