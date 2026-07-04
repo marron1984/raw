@@ -1,5 +1,4 @@
 import type { PrismaClient, Prisma } from "@prisma/client";
-import bcrypt from "bcryptjs";
 import { KAIGO_JUSETSU_BODY, SHOGAI_JUSETSU_BODY } from "./seed-jusetsu";
 import {
   CAREMGMT_KEIYAKU_BODY,
@@ -9,30 +8,17 @@ import {
 // PrismaClient とトランザクションクライアントの両方を受け取れるようにする
 type Db = PrismaClient | Prisma.TransactionClient;
 
-// 初期管理者とテンプレートをDBへ同期する（seed / 起動時bootstrap 共用）
+// 初期データ（担当者・テンプレート）をDBへ同期する（seed / 起動時bootstrap 共用）
 export async function syncCoreData(db: Db): Promise<void> {
-  const email = process.env.SEED_ADMIN_EMAIL ?? "yoshida@aska-g.com";
-  const name = process.env.SEED_ADMIN_NAME ?? "吉田";
-  // パスワードは秘密情報のため既定値を持たない（fail-closed）。
-  // SEED_ADMIN_PASSWORD 未設定時は管理者の作成・更新を行わない。
-  const password = process.env.SEED_ADMIN_PASSWORD;
-
-  let admin: { id: string } | null = null;
-  if (password) {
-    const passwordHash = await bcrypt.hash(password, 10);
-    admin = await db.user.upsert({
-      where: { email },
-      update: { passwordHash, name, role: "ADMIN", isActive: true },
-      create: { email, name, passwordHash, role: "ADMIN" },
+  // 担当者マスタが空なら初期担当者を登録
+  const staffCount = await db.staff.count();
+  if (staffCount === 0) {
+    await db.staff.createMany({
+      data: [
+        { name: "吉田 俊輔", email: "yoshida@aska-g.com" },
+        { name: "生田 友哉" },
+      ],
     });
-  } else {
-    admin = await db.user.findUnique({ where: { email } });
-    if (!admin) {
-      console.warn(
-        "SEED_ADMIN_PASSWORD が未設定のため、初期管理者を作成しません。" +
-          "環境変数 SEED_ADMIN_PASSWORD を設定してください。"
-      );
-    }
   }
 
   // タイトル一致で作成 or 更新
@@ -51,9 +37,7 @@ export async function syncCoreData(db: Db): Promise<void> {
         data: { ...data, isActive: true },
       });
     } else {
-      await db.contractTemplate.create({
-        data: { ...data, createdById: admin?.id ?? null },
-      });
+      await db.contractTemplate.create({ data });
     }
   }
 

@@ -58,7 +58,6 @@ export default async function ContractDetailPage({
     include: {
       signers: { orderBy: { order: "asc" } },
       auditLogs: { orderBy: { createdAt: "desc" } },
-      createdBy: true,
     },
   });
   if (!contract) notFound();
@@ -152,8 +151,8 @@ export default async function ContractDetailPage({
         <dl className="kv">
           <dt>契約種別</dt>
           <dd>{CATEGORY_LABELS[contract.category] ?? contract.category}</dd>
-          <dt>作成者</dt>
-          <dd>{contract.createdBy?.name ?? "—"}</dd>
+          <dt>担当者</dt>
+          <dd>{contract.staffName ?? "—"}</dd>
           <dt>作成日時</dt>
           <dd>{fmt(contract.createdAt)}</dd>
           <dt>送信日時</dt>

@@ -48,6 +48,8 @@ CREATE TABLE "Contract" (
     "completedAt" TIMESTAMP(3),
     "driveFileId" TEXT,
     "driveSavedAt" TIMESTAMP(3),
+    "staffName" TEXT,
+    "staffEmail" TEXT,
     "templateId" TEXT,
     "createdById" TEXT,
 
@@ -86,6 +88,19 @@ CREATE TABLE "AuditLog" (
     "contractId" TEXT NOT NULL,
 
     CONSTRAINT "AuditLog_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Staff" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "email" TEXT,
+    "phone" TEXT,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Staff_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable

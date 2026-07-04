@@ -13,6 +13,8 @@ type TemplateOption = {
   category: string;
 };
 
+type StaffOption = { id: string; name: string };
+
 type ClientOption = {
   id: string;
   name: string;
@@ -70,16 +72,19 @@ export function NewContractForm({
   templates,
   explanationTemplates,
   clients,
+  staffList,
 }: {
   templates: TemplateOption[];
   explanationTemplates: TemplateOption[];
   clients: ClientOption[];
+  staffList: StaffOption[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const [templateId, setTemplateId] = useState("");
   const [explanationTemplateId, setExplanationTemplateId] = useState("");
+  const [staffId, setStaffId] = useState("");
   const [title, setTitle] = useState("");
   const [contractKeys, setContractKeys] = useState<string[]>([]);
   const [explanationKeys, setExplanationKeys] = useState<string[]>([]);
@@ -150,6 +155,7 @@ export function NewContractForm({
       const res = await createContractAction({
         templateId,
         explanationTemplateId: explanationTemplateId || undefined,
+        staffId: staffId || undefined,
         title,
         fields,
         signers: signers
@@ -191,6 +197,24 @@ export function NewContractForm({
       )}
 
       <div className="panel">
+        {staffList.length > 0 && (
+          <>
+            <label htmlFor="staff">担当者</label>
+            <select
+              id="staff"
+              value={staffId}
+              onChange={(e) => setStaffId(e.target.value)}
+            >
+              <option value="">― 選択してください ―</option>
+              {staffList.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
+
         <label htmlFor="template">テンプレート</label>
         <select
           id="template"

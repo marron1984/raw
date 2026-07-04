@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
+import { isAuthenticated } from "@/lib/auth";
+import { ensureBootstrap } from "@/lib/bootstrap";
 import { TopNav } from "@/components/TopNav";
 
 export default async function AppLayout({
@@ -7,18 +8,19 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // DB未接続でもクラッシュさせず、ログイン画面（エラー表示あり）へ誘導する
-  let user = null;
+  if (!isAuthenticated()) redirect("/login");
+
+  // 初回アクセス時にDBを自動セットアップ（失敗時はログイン画面で案内）
   try {
-    user = await getCurrentUser();
+    await ensureBootstrap();
   } catch (e) {
     console.error("app layout: db error:", e);
+    redirect("/login");
   }
-  if (!user) redirect("/login");
 
   return (
     <>
-      <TopNav user={user} />
+      <TopNav />
       <main className="container">{children}</main>
     </>
   );

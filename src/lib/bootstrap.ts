@@ -40,6 +40,18 @@ const COLUMN_MIGRATIONS = [
   'ALTER TABLE "Contract" ADD COLUMN IF NOT EXISTS "driveSavedAt" TIMESTAMP(3)',
   'ALTER TABLE "Contract" ADD COLUMN IF NOT EXISTS "explanationTitle" TEXT',
   'ALTER TABLE "Contract" ADD COLUMN IF NOT EXISTS "explanationBody" TEXT',
+  'ALTER TABLE "Contract" ADD COLUMN IF NOT EXISTS "staffName" TEXT',
+  'ALTER TABLE "Contract" ADD COLUMN IF NOT EXISTS "staffEmail" TEXT',
+  `CREATE TABLE IF NOT EXISTS "Staff" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "email" TEXT,
+    "phone" TEXT,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    CONSTRAINT "Staff_pkey" PRIMARY KEY ("id")
+  )`,
   `CREATE TABLE IF NOT EXISTS "Client" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,

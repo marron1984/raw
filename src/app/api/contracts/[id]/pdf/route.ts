@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { isAuthenticated } from "@/lib/auth";
 import { recordAudit } from "@/lib/audit";
 import { renderContractPdf } from "@/lib/contract-pdf";
 
@@ -10,9 +10,8 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  // PDFダウンロードは社内ユーザーのみ
-  const user = await getCurrentUser();
-  if (!user) {
+  // PDFダウンロードは共通パスワードでログイン済みの社内利用者のみ
+  if (!isAuthenticated()) {
     return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
   }
 
@@ -34,7 +33,7 @@ export async function GET(
     await recordAudit({
       contractId: contract.id,
       event: "PDF_GENERATED",
-      actor: user.name,
+      actor: "職員",
       detail: "締結済みPDFをダウンロード",
     });
   }

@@ -5,7 +5,7 @@ import { NewContractForm } from "./NewContractForm";
 export const dynamic = "force-dynamic";
 
 export default async function NewContractPage() {
-  const [allTemplates, clients] = await Promise.all([
+  const [allTemplates, clients, staffList] = await Promise.all([
     prisma.contractTemplate.findMany({
       where: { isActive: true },
       orderBy: { title: "asc" },
@@ -15,6 +15,11 @@ export default async function NewContractPage() {
       where: { isActive: true },
       orderBy: { name: "asc" },
       select: { id: true, name: true, email: true, phone: true, address: true },
+    }),
+    prisma.staff.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
     }),
   ]);
 
@@ -41,6 +46,7 @@ export default async function NewContractPage() {
             templates={templates}
             explanationTemplates={explanationTemplates}
             clients={clients}
+            staffList={staffList}
           />
         </div>
       )}

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
 import { renderTemplate, extractPlaceholders } from "@/lib/template";
 import { recordAudit, getClientIp } from "@/lib/audit";
 import { generateSignToken } from "@/lib/token";
@@ -20,6 +20,7 @@ const signerSchema = z.object({
 const createSchema = z.object({
   templateId: z.string().min(1, "テンプレートを選択してください"),
   explanationTemplateId: z.string().optional(),
+  staffId: z.string().optional(),
   title: z.string().trim().min(1, "契約タイトルを入力してください"),
   fields: z.record(z.string()),
   signers: z.array(signerSchema).min(1, "署名者を1名以上入力してください"),
@@ -29,13 +30,18 @@ const createSchema = z.object({
 export async function createContractAction(
   payload: unknown
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
-  const user = await requireUser();
+  requireAuth();
   const parsed = createSchema.safeParse(payload);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0].message };
   }
-  const { templateId, explanationTemplateId, title, fields, signers } =
+  const { templateId, explanationTemplateId, staffId, title, fields, signers } =
     parsed.data;
+
+  // 担当者（担当者マスタから選択）
+  const staff = staffId
+    ? await prisma.staff.findUnique({ where: { id: staffId } })
+    : null;
 
   const template = await prisma.contractTemplate.findUnique({
     where: { id: templateId },
@@ -67,7 +73,8 @@ export async function createContractAction(
       explanationBody,
       fields: JSON.stringify(fields),
       templateId: template.id,
-      createdById: user.id,
+      staffName: staff?.name ?? null,
+      staffEmail: staff?.email ?? null,
       status: "DRAFT",
       signers: {
         create: signers.map((s, i) => ({
@@ -83,7 +90,7 @@ export async function createContractAction(
   await recordAudit({
     contractId: contract.id,
     event: "CREATED",
-    actor: user.name,
+    actor: staff?.name ?? "職員",
     detail: `テンプレート「${template.title}」から作成`,
     ipAddress: getClientIp(),
   });
@@ -93,7 +100,7 @@ export async function createContractAction(
 
 // 契約を「送信」状態にし、署名者へ署名依頼メールを送る
 export async function sendContractAction(id: string): Promise<void> {
-  const user = await requireUser();
+  requireAuth();
   const contract = await prisma.contract.findUnique({
     where: { id },
     include: { signers: true },
@@ -108,7 +115,7 @@ export async function sendContractAction(id: string): Promise<void> {
   await recordAudit({
     contractId: id,
     event: "SENT",
-    actor: user.name,
+    actor: contract.staffName ?? "職員",
     detail: "署名依頼を送信",
     ipAddress: getClientIp(),
   });
@@ -138,7 +145,7 @@ export async function sendContractAction(id: string): Promise<void> {
 
 // 1名の署名者へ署名依頼メールを再送する
 export async function resendSignEmailAction(signerId: string): Promise<void> {
-  const user = await requireUser();
+  requireAuth();
   const signer = await prisma.signer.findUnique({
     where: { id: signerId },
     include: { contract: true },
@@ -155,7 +162,7 @@ export async function resendSignEmailAction(signerId: string): Promise<void> {
   await recordAudit({
     contractId: signer.contractId,
     event: res.ok ? "EMAIL_SENT" : "EMAIL_FAILED",
-    actor: user.name,
+    actor: signer.contract.staffName ?? "職員",
     detail: res.skipped
       ? "メール未設定のため送信せず（URLを案内してください）"
       : res.ok
@@ -168,16 +175,16 @@ export async function resendSignEmailAction(signerId: string): Promise<void> {
 
 // 締結済み契約のPDFをGoogleドライブへ手動保存（再保存）する
 export async function saveToDriveAction(id: string): Promise<void> {
-  const user = await requireUser();
+  requireAuth();
   const contract = await prisma.contract.findUnique({ where: { id } });
   if (!contract || contract.status !== "SIGNED") return;
-  await saveContractToDrive(id, user.name);
+  await saveContractToDrive(id, contract.staffName ?? "職員");
   revalidatePath(`/contracts/${id}`);
 }
 
 // 契約の取消
 export async function cancelContractAction(id: string): Promise<void> {
-  const user = await requireUser();
+  requireAuth();
   const contract = await prisma.contract.findUnique({ where: { id } });
   if (!contract) return;
   if (contract.status === "SIGNED") return; // 締結済みは取消不可
@@ -189,7 +196,7 @@ export async function cancelContractAction(id: string): Promise<void> {
   await recordAudit({
     contractId: id,
     event: "CANCELLED",
-    actor: user.name,
+    actor: contract.staffName ?? "職員",
     detail: "契約を取消",
     ipAddress: getClientIp(),
   });
@@ -199,7 +206,7 @@ export async function cancelContractAction(id: string): Promise<void> {
 
 // 契約の削除（下書き・取消のみ）
 export async function deleteContractAction(id: string): Promise<void> {
-  await requireUser();
+  requireAuth();
   const contract = await prisma.contract.findUnique({ where: { id } });
   if (!contract) return;
   if (!["DRAFT", "CANCELLED"].includes(contract.status)) return;
@@ -212,7 +219,7 @@ export async function deleteContractAction(id: string): Promise<void> {
 export async function getTemplatePlaceholdersAction(
   templateId: string
 ): Promise<{ keys: string[]; body: string } | null> {
-  await requireUser();
+  requireAuth();
   const template = await prisma.contractTemplate.findUnique({
     where: { id: templateId },
   });

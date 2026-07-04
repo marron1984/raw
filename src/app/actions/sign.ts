@@ -60,7 +60,7 @@ export async function signAction(
 
   const signer = await prisma.signer.findUnique({
     where: { token },
-    include: { contract: { include: { signers: true, createdBy: true } } },
+    include: { contract: { include: { signers: true } } },
   });
   if (!signer) return { error: "署名リンクが無効です。" };
   if (signer.status === "SIGNED") return { done: true };
@@ -121,11 +121,11 @@ export async function signAction(
       const recipients: { to: string; name: string }[] = signer.contract.signers
         .filter((s) => s.email)
         .map((s) => ({ to: s.email, name: s.name }));
-      const staffEmail = signer.contract.createdBy?.email;
+      const staffEmail = signer.contract.staffEmail;
       if (staffEmail && !recipients.some((r) => r.to === staffEmail)) {
         recipients.push({
           to: staffEmail,
-          name: signer.contract.createdBy?.name ?? "担当者",
+          name: signer.contract.staffName ?? "担当者",
         });
       }
       for (const r of recipients) {

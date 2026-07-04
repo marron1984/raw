@@ -74,6 +74,10 @@ model Contract {
   driveFileId String?
   driveSavedAt DateTime?
 
+  // 担当者（担当者マスタから選択。共通パスワード運用のため契約単位で記録）
+  staffName  String?
+  staffEmail String?
+
   template   ContractTemplate? @relation(fields: [templateId], references: [id])
   templateId String?
   createdBy  User?             @relation(fields: [createdById], references: [id])
@@ -131,6 +135,19 @@ model AuditLog {
   contractId String
 
   @@index([contractId])
+}
+
+// ─────────────────────────────────────────────
+// 担当者マスタ（社内の担当スタッフ。契約作成時に選択する）
+// ─────────────────────────────────────────────
+model Staff {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ─────────────────────────────────────────────

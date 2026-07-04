@@ -26,9 +26,10 @@
 - OTF(CFF)やsubset:trueに変えてはいけない（pdf-libの不具合で日本語が表示されなくなる）
 
 ### 4. セキュリティ（fail-closed）
-- 認証情報の既定値をソースコードに書かない
-- `SEED_ADMIN_PASSWORD` 未設定時は管理者を作成しない
+- 認証は共通パスワード方式（`APP_PASSCODE`）。個別アカウントは廃止済み
+- パスコード未設定時はログイン不可（fail-closed）。既定値をコードに書かない
 - `SESSION_SECRET` 未設定時は `DATABASE_URL` から鍵を導出（共有既定値は禁止）
+- 契約には担当者マスタ（Staff）から選んだ担当者名/メールを記録する
 - `.env` はコミット禁止（`.env.example` のみ更新可）
 
 ### 5. テンプレートの同期
@@ -45,7 +46,8 @@ npm run build         # 本番ビルド（CIと同じ。DB不要で通ること�
 | 変数 | 必須 | 説明 |
 |---|---|---|
 | `DATABASE_URL` | ✅ | Supabase Session pooler の接続文字列（`?sslmode=require` 付き） |
-| `SEED_ADMIN_PASSWORD` | ✅ | 初期管理者のログインパスワード |
+| `APP_PASSCODE` | ✅ | 共通パスワード（全社員同一。未設定時は SEED_ADMIN_PASSWORD を使用） |
+| `MAINTENANCE_KEY` | 任意 | 契約一括リセットAPIの有効化キー（通常は未設定） |
 | `SESSION_SECRET` | 推奨 | セッション署名鍵（未設定時はDATABASE_URLから導出） |
 | `APP_URL` | 任意 | 署名URL生成用（未設定時はVercel本番ドメイン） |
 | `RESEND_API_KEY` | 任意 | 署名依頼メール送信（Resend）。未設定時はメール送信せずURL案内のみ |
