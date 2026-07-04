@@ -5,6 +5,10 @@ import crypto from "crypto";
 // 社員全員が同じパスコードでログインし、個別アカウントは持たない。
 // パスコードは APP_PASSCODE（未設定時は SEED_ADMIN_PASSWORD）で設定する。
 
+// 一時的に認証を無効化（パスワードフリー運用）。
+// 共通パスワードを再度有効にする場合は false に戻すだけでよい。
+export const AUTH_DISABLED = true;
+
 const COOKIE_NAME = "ec_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30日
 
@@ -90,6 +94,7 @@ export function destroySession(): void {
 
 // ログイン済みか（共通パスコード入力済みか）
 export function isAuthenticated(): boolean {
+  if (AUTH_DISABLED) return true;
   const token = cookies().get(COOKIE_NAME)?.value;
   if (!token) return false;
   return verifyToken(token) !== null;

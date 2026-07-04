@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { logoutAction } from "@/app/actions/auth";
 
 const LINKS = [
   { href: "/dashboard", label: "ダッシュボード" },
@@ -34,13 +33,7 @@ export function TopNav() {
             </Link>
           ))}
         </nav>
-        <div className="user">
-          <form action={logoutAction}>
-            <button className="btn secondary" style={{ padding: "5px 12px" }}>
-              ログアウト
-            </button>
-          </form>
-        </div>
+        {/* 認証無効化中のためログアウトボタンは非表示（再有効化時に戻す） */}
       </div>
     </div>
   );

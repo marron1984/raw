@@ -6,6 +6,8 @@ import { LoginForm } from "./LoginForm";
 export const dynamic = "force-dynamic";
 
 export default function LoginPage() {
+  // 認証無効化中（AUTH_DISABLED）は isAuthenticated が常に true になり、
+  // ログイン画面を経由せずダッシュボードへ直行する
   if (isAuthenticated()) redirect("/dashboard");
 
   return (
