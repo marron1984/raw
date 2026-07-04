@@ -14,6 +14,7 @@ import {
   SignerStatusBadge,
 } from "@/components/StatusBadge";
 import { CopyField } from "@/components/CopyField";
+import { DocBody } from "@/components/DocBody";
 import { CATEGORY_LABELS } from "@/lib/template";
 import { isEmailConfigured } from "@/lib/email";
 import { getAppUrl } from "@/lib/url";
@@ -246,12 +247,12 @@ export default async function ContractDetailPage({
       {contract.explanationBody && (
         <>
           <h2>{contract.explanationTitle ?? "重要事項説明書"}</h2>
-          <div className="contract-body">{contract.explanationBody}</div>
+          <DocBody className="contract-body" text={contract.explanationBody} />
         </>
       )}
 
       <h2>契約内容</h2>
-      <div className="contract-body">{contract.body}</div>
+      <DocBody className="contract-body" text={contract.body} />
 
       {/* 監査ログ */}
       <h2>監査ログ（証跡）</h2>

@@ -155,6 +155,123 @@ export async function generateContractPdf(
     y -= 12;
   };
 
+  // 「|」区切りの行を罫線付きの表として描画する（料金表などの崩れ防止）
+  const drawTable = (rows: string[][]) => {
+    const cols = Math.max(...rows.map((r) => r.length));
+    const size = 8;
+    const pad = 4;
+    const lh = size * 1.35;
+    const border = rgb(0.62, 0.67, 0.74);
+    const headerBg = rgb(0.93, 0.95, 0.975);
+
+    // 列幅：各列の最長セル幅に比例して全体幅へ配分（最小36pt）
+    const natural = Array.from({ length: cols }, (_, c) =>
+      Math.max(
+        36,
+        ...rows.map((r) => font.widthOfTextAtSize(r[c] ?? "", size) + 2)
+      )
+    );
+    const usable = maxWidth - cols * pad * 2;
+    const naturalSum = natural.reduce((a, b) => a + b, 0);
+    const colW = natural.map((w) => (w / naturalSum) * usable);
+
+    const drawRow = (cells: string[], isHeader: boolean) => {
+      const wrapped = cells.map((cell, c) =>
+        wrapText(cell ?? "", font, size, colW[c] - 1)
+      );
+      const lines = Math.max(1, ...wrapped.map((w) => w.length));
+      const rowH = lines * lh + pad * 2;
+      if (y - rowH < bottomLimit) newPage();
+      const top = y;
+      const bottom = y - rowH;
+      if (isHeader) {
+        page.drawRectangle({
+          x: margin,
+          y: bottom,
+          width: maxWidth,
+          height: rowH,
+          color: headerBg,
+        });
+      }
+      // 罫線（外枠・縦線・下線）
+      let x = margin;
+      for (let c = 0; c <= cols; c++) {
+        page.drawLine({
+          start: { x, y: top },
+          end: { x, y: bottom },
+          thickness: 0.5,
+          color: border,
+        });
+        if (c < cols) x += colW[c] + pad * 2;
+      }
+      page.drawLine({
+        start: { x: margin, y: top },
+        end: { x: margin + maxWidth, y: top },
+        thickness: 0.5,
+        color: border,
+      });
+      page.drawLine({
+        start: { x: margin, y: bottom },
+        end: { x: margin + maxWidth, y: bottom },
+        thickness: 0.5,
+        color: border,
+      });
+      // セル文字
+      x = margin;
+      for (let c = 0; c < cols; c++) {
+        let ty = top - pad - size;
+        for (const line of wrapped[c] ?? []) {
+          page.drawText(line, { x: x + pad, y: ty, size, font, color: black });
+          ty -= lh;
+        }
+        x += colW[c] + pad * 2;
+      }
+      y = bottom;
+    };
+
+    rows.forEach((r, i) => drawRow(r, i === 0));
+    y -= 12;
+  };
+
+  // 本文を描画。連続する「|」行は表として、それ以外は通常の段落として描く
+  const parseTableRow = (line: string): string[] =>
+    line
+      .trim()
+      .replace(/^\|/, "")
+      .replace(/\|$/, "")
+      .split("|")
+      .map((s) => s.trim());
+
+  const drawBody = (body: string, gap: number) => {
+    const lines = body.split("\n");
+    let textBuf: string[] = [];
+    let tableBuf: string[][] = [];
+    const flushText = () => {
+      if (textBuf.length) {
+        draw(textBuf.join("\n"), 10.5);
+        textBuf = [];
+      }
+    };
+    const flushTable = () => {
+      if (tableBuf.length) {
+        drawTable(tableBuf);
+        tableBuf = [];
+      }
+    };
+    for (const line of lines) {
+      if (line.trimStart().startsWith("|")) {
+        flushText();
+        tableBuf.push(parseTableRow(line));
+      } else {
+        flushTable();
+        textBuf.push(line);
+      }
+    }
+    flushText();
+    flushTable();
+    y -= gap;
+  };
+
   // 重要事項説明書（あれば契約本文の前に別ページで出力）
   if (input.explanationBody) {
     draw(input.explanationTitle ?? "重要事項説明書", 14, {
@@ -162,7 +279,7 @@ export async function generateContractPdf(
       gap: 6,
     });
     hr();
-    draw(input.explanationBody, 10.5, { gap: 14 });
+    drawBody(input.explanationBody, 14);
     newPage();
   }
 
@@ -176,7 +293,7 @@ export async function generateContractPdf(
   hr();
 
   // 本文
-  draw(input.body, 10.5, { gap: 14 });
+  drawBody(input.body, 14);
 
   // 手書き署名画像を先に埋め込む（描画処理は同期のため事前に解決しておく）
   const signatureImgs = await Promise.all(

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { ensureBootstrap } from "@/lib/bootstrap";
 import { markViewedAction } from "@/app/actions/sign";
 import { CATEGORY_LABELS } from "@/lib/template";
+import { DocBody } from "@/components/DocBody";
 import { SignForm } from "./SignForm";
 
 export const dynamic = "force-dynamic";
@@ -87,12 +88,12 @@ export default async function SignPage({
           <h2 style={{ fontSize: 16 }}>
             {contract.explanationTitle ?? "重要事項説明書"}
           </h2>
-          <div className="sign-doc">{contract.explanationBody}</div>
+          <DocBody className="sign-doc" text={contract.explanationBody} />
           <h2 style={{ fontSize: 16 }}>契約書</h2>
         </>
       )}
 
-      <div className="sign-doc">{contract.body}</div>
+      <DocBody className="sign-doc" text={contract.body} />
 
       {alreadySigned ? (
         <div className="consent-box">

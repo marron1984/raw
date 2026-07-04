@@ -762,3 +762,52 @@ tbody tr:last-child td {
     text-decoration: none;
   }
 }
+
+/* ───────── 本文中の表（料金表など） ───────── */
+.doc-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+.doc-table th,
+.doc-table td {
+  border: 1px solid var(--border);
+  padding: 6px 8px;
+  white-space: normal;
+  vertical-align: top;
+  text-align: left;
+  font-weight: 400;
+}
+.doc-table th {
+  background: #eef2f7;
+  font-weight: 600;
+}
+@media (max-width: 700px) {
+  .doc-table {
+    font-size: 11px;
+  }
+  .doc-table th,
+  .doc-table td {
+    padding: 4px 6px;
+    white-space: normal;
+  }
+}
+@media print {
+  .doc-table {
+    font-size: 8pt;
+    line-height: 1.4;
+  }
+  .doc-table th,
+  .doc-table td {
+    border: 0.5pt solid #999;
+    padding: 3pt 4pt;
+  }
+  .doc-table {
+    break-inside: auto;
+  }
+  .doc-table tr {
+    break-inside: avoid;
+  }
+}
