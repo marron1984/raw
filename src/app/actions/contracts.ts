@@ -13,9 +13,14 @@ import { signUrlForToken } from "@/lib/url";
 import { saveContractToDrive } from "@/lib/drive-save";
 import { getDocSet } from "@/lib/doc-sets";
 
+// メールは任意（対面サイン運用では空欄で作成し、その場で署名してもらう）
 const signerSchema = z.object({
   name: z.string().trim().min(1),
-  email: z.string().trim().email(),
+  email: z
+    .string()
+    .trim()
+    .email("メールアドレスの形式が正しくありません")
+    .or(z.string().trim().max(0)),
 });
 
 const createSchema = z.object({
@@ -121,8 +126,9 @@ export async function sendContractAction(id: string): Promise<void> {
     ipAddress: getClientIp(),
   });
 
-  // 各署名者へ署名依頼メールを送信（メール未設定時はURLコピー運用）
+  // 各署名者へ署名依頼メールを送信（メール未設定・アドレス未入力時はURLコピー運用）
   for (const signer of contract.signers) {
+    if (!signer.email) continue;
     const res = await sendSignRequestEmail({
       to: signer.email,
       signerName: signer.name,
@@ -144,6 +150,38 @@ export async function sendContractAction(id: string): Promise<void> {
   revalidatePath("/contracts");
 }
 
+// 対面サイン：契約書をこの端末に表示し、その場で確認・署名してもらう
+export async function startSigningAction(id: string): Promise<void> {
+  requireAuth();
+  const contract = await prisma.contract.findUnique({
+    where: { id },
+    include: { signers: { orderBy: { order: "asc" } } },
+  });
+  if (!contract) return;
+  if (!["DRAFT", "SENT", "VIEWED"].includes(contract.status)) return;
+
+  if (contract.status === "DRAFT") {
+    await prisma.contract.update({
+      where: { id },
+      data: { status: "SENT", sentAt: new Date() },
+    });
+    await recordAudit({
+      contractId: id,
+      event: "SENT",
+      actor: contract.staffName ?? "職員",
+      detail: "対面での署名を開始（この端末で契約書を表示）",
+      ipAddress: getClientIp(),
+    });
+    revalidatePath(`/contracts/${id}`);
+    revalidatePath("/contracts");
+  }
+
+  // 未署名の先頭署名者の署名ページへ移動
+  const target = contract.signers.find((s) => s.status !== "SIGNED");
+  if (!target) return;
+  redirect(`/sign/${target.token}`);
+}
+
 // 1名の署名者へ署名依頼メールを再送する
 export async function resendSignEmailAction(signerId: string): Promise<void> {
   requireAuth();
@@ -151,7 +189,7 @@ export async function resendSignEmailAction(signerId: string): Promise<void> {
     where: { id: signerId },
     include: { contract: true },
   });
-  if (!signer) return;
+  if (!signer || !signer.email) return;
   if (!["SENT", "VIEWED"].includes(signer.contract.status)) return;
 
   const res = await sendSignRequestEmail({

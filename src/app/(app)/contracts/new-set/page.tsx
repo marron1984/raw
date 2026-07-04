@@ -7,7 +7,7 @@ import { NewSetForm } from "./NewSetForm";
 export const dynamic = "force-dynamic";
 
 export default async function NewContractSetPage() {
-  const [templates, clients, staffList] = await Promise.all([
+  const [templates, clients, staffList, locationRows] = await Promise.all([
     prisma.contractTemplate.findMany({
       where: { isActive: true },
       select: { title: true, body: true },
@@ -22,7 +22,20 @@ export default async function NewContractSetPage() {
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
+    prisma.location.findMany({
+      where: { isActive: true },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, name: true, fieldsJson: true },
+    }),
   ]);
+
+  const locations = locationRows.map((l) => {
+    let fields: Record<string, string> = {};
+    try {
+      fields = JSON.parse(l.fieldsJson);
+    } catch {}
+    return { id: l.id, name: l.name, fields };
+  });
 
   const byTitle = new Map(templates.map((t) => [t.title, t.body]));
 
@@ -70,7 +83,7 @@ export default async function NewContractSetPage() {
         相手先と共通項目を1回入力するだけで、セット内の全書類（契約書・重説・同意書など）をまとめて下書き作成します。
       </p>
       <div style={{ marginTop: 16 }}>
-        <NewSetForm sets={sets} clients={clients} staffList={staffList} />
+        <NewSetForm sets={sets} clients={clients} staffList={staffList} locations={locations} />
       </div>
     </>
   );

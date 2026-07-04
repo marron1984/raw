@@ -1,4 +1,5 @@
 import type { PrismaClient, Prisma } from "@prisma/client";
+import { DEFAULT_FIELD_VALUES } from "./field-labels";
 import { KAIGO_JUSETSU_BODY, SHOGAI_JUSETSU_BODY } from "./seed-jusetsu";
 import {
   CAREMGMT_KEIYAKU_BODY,
@@ -10,6 +11,18 @@ type Db = PrismaClient | Prisma.TransactionClient;
 
 // 初期データ（担当者・テンプレート）をDBへ同期する（seed / 起動時bootstrap 共用）
 export async function syncCoreData(db: Db): Promise<void> {
+  // 拠点マスタが空なら初期拠点（いいすまい塚本）を登録
+  const locationCount = await db.location.count();
+  if (locationCount === 0) {
+    await db.location.create({
+      data: {
+        name: "いいすまい塚本",
+        note: "パシフィック塚本（大阪市西淀川区野里一丁目32-14）",
+        fieldsJson: JSON.stringify(DEFAULT_FIELD_VALUES),
+      },
+    });
+  }
+
   // 担当者マスタが空なら初期担当者を登録
   const staffCount = await db.staff.count();
   if (staffCount === 0) {

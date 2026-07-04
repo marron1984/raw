@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/contracts", label: "契約" },
   { href: "/clients", label: "相手先" },
   { href: "/staff", label: "担当者" },
+  { href: "/locations", label: "拠点" },
   { href: "/templates", label: "テンプレート" },
 ];
 

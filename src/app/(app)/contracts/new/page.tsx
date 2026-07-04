@@ -5,7 +5,7 @@ import { NewContractForm } from "./NewContractForm";
 export const dynamic = "force-dynamic";
 
 export default async function NewContractPage() {
-  const [allTemplates, clients, staffList] = await Promise.all([
+  const [allTemplates, clients, staffList, locationRows] = await Promise.all([
     prisma.contractTemplate.findMany({
       where: { isActive: true },
       orderBy: { title: "asc" },
@@ -21,7 +21,20 @@ export default async function NewContractPage() {
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
+    prisma.location.findMany({
+      where: { isActive: true },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, name: true, fieldsJson: true },
+    }),
   ]);
+
+  const locations = locationRows.map((l) => {
+    let fields: Record<string, string> = {};
+    try {
+      fields = JSON.parse(l.fieldsJson);
+    } catch {}
+    return { id: l.id, name: l.name, fields };
+  });
 
   // 重要事項説明書は契約テンプレート選択肢から除外し、専用selectに回す
   const templates = allTemplates.filter((t) => t.category !== "EXPLANATION");
@@ -47,6 +60,7 @@ export default async function NewContractPage() {
             explanationTemplates={explanationTemplates}
             clients={clients}
             staffList={staffList}
+            locations={locations}
           />
         </div>
       )}

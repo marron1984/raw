@@ -23,20 +23,25 @@ type ClientOption = {
 
 type StaffOption = { id: string; name: string };
 
+type LocationOption = { id: string; name: string; fields: Record<string, string> };
+
 export function NewSetForm({
   sets,
   clients,
   staffList,
+  locations,
 }: {
   sets: SetOption[];
   clients: ClientOption[];
   staffList: StaffOption[];
+  locations: LocationOption[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const [setKey, setSetKey] = useState("");
   const [staffId, setStaffId] = useState("");
+  const [locationId, setLocationId] = useState("");
   const [signerName, setSignerName] = useState("");
   const [signerEmail, setSignerEmail] = useState("");
   const [fields, setFields] = useState<Record<string, string>>({});
@@ -44,6 +49,21 @@ export function NewSetForm({
 
   const selected = sets.find((s) => s.key === setKey);
   const keys = selected?.keys ?? [];
+
+  // 拠点マスタの初期値を差し込み項目へ反映（対象セットのキーのみ）
+  function applyLocation(id: string, targetKeys?: string[]) {
+    setLocationId(id);
+    const loc = locations.find((x) => x.id === id);
+    if (!loc) return;
+    const ks = targetKeys ?? keys;
+    setFields((prev) => {
+      const next = { ...prev };
+      for (const k of ks) {
+        if (loc.fields[k] !== undefined) next[k] = loc.fields[k];
+      }
+      return next;
+    });
+  }
 
   // 相手先マスタから署名者・差し込み項目を補完
   function applyClient(id: string) {
@@ -107,7 +127,14 @@ export function NewSetForm({
             setSetKey(key);
             // 固定情報（物件住所・金額・口座など）を初期値として自動入力
             const newKeys = sets.find((x) => x.key === key)?.keys ?? [];
-            setFields(defaultsFor(newKeys));
+            const base = defaultsFor(newKeys);
+            const loc = locations.find((x) => x.id === locationId);
+            if (loc) {
+              for (const k of newKeys) {
+                if (loc.fields[k] !== undefined) base[k] = loc.fields[k];
+              }
+            }
+            setFields(base);
           }}
           required
         >
@@ -127,6 +154,27 @@ export function NewSetForm({
               ))}
             </ul>
           </div>
+        )}
+
+        {locations.length > 0 && (
+          <>
+            <label htmlFor="location">拠点（物件・事業所）</label>
+            <select
+              id="location"
+              value={locationId}
+              onChange={(e) => applyLocation(e.target.value)}
+            >
+              <option value="">― 選択して初期値を反映 ―</option>
+              {locations.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
+            <p className="hint">
+              拠点マスタに登録した住所・金額・口座などが差し込み項目へ自動入力されます。
+            </p>
+          </>
         )}
 
         {staffList.length > 0 && (
@@ -180,13 +228,12 @@ export function NewSetForm({
             />
           </div>
           <div>
-            <label htmlFor="signerEmail">メールアドレス</label>
+            <label htmlFor="signerEmail">メールアドレス（任意）</label>
             <input
               id="signerEmail"
               type="email"
               value={signerEmail}
               onChange={(e) => setSignerEmail(e.target.value)}
-              required
             />
           </div>
         </div>

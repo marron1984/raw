@@ -3,9 +3,9 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import {
   sendContractAction,
+  startSigningAction,
   cancelContractAction,
   deleteContractAction,
-  resendSignEmailAction,
   saveToDriveAction,
 } from "@/app/actions/contracts";
 import { isDriveConfigured } from "@/lib/drive-save";
@@ -71,7 +71,12 @@ export default async function ContractDetailPage({
     contract.status
   );
 
+  const hasUnsigned = contract.signers.some((s) => s.status !== "SIGNED");
+  const canStartSigning =
+    ["DRAFT", "SENT", "VIEWED"].includes(contract.status) && hasUnsigned;
+
   const sendWithId = sendContractAction.bind(null, contract.id);
+  const startWithId = startSigningAction.bind(null, contract.id);
   const cancelWithId = cancelContractAction.bind(null, contract.id);
   const deleteWithId = deleteContractAction.bind(null, contract.id);
   const saveDriveWithId = saveToDriveAction.bind(null, contract.id);
@@ -91,11 +96,14 @@ export default async function ContractDetailPage({
       {/* 操作 */}
       <div className="panel">
         <div className="btn-row">
-          {isDraft && (
+          {canStartSigning && (
+            <form action={startWithId}>
+              <button className="btn success">契約書を表示して署名へ</button>
+            </form>
+          )}
+          {isDraft && emailOn && (
             <form action={sendWithId}>
-              <button className="btn success">
-                {emailOn ? "署名依頼メールを送信する" : "署名依頼を送信する"}
-              </button>
+              <button className="btn secondary">署名依頼メールを送信する</button>
             </form>
           )}
           {isSigned && (
@@ -132,16 +140,10 @@ export default async function ContractDetailPage({
             </form>
           )}
         </div>
-        {isDraft && (
+        {canStartSigning && (
           <p className="hint" style={{ marginTop: 10 }}>
-            {emailOn
-              ? "送信すると、各署名者のメールアドレス宛に署名依頼メール（署名用URL付き）が届きます。"
-              : "送信すると署名者ごとの署名用URLが有効になります。メール送信は未設定のため、下に表示されるURLを各署名者へ案内してください。"}
-          </p>
-        )}
-        {isDraft && !emailOn && (
-          <p className="hint" style={{ marginTop: 4, color: "var(--warn)" }}>
-            メール自動送信を使うには、環境変数 RESEND_API_KEY（と送信元 MAIL_FROM）の設定が必要です。
+            「契約書を表示して署名へ」を押すと、この端末に契約書が表示され、その場で内容を確認して手書きサインをいただけます。
+            署名者にはお使いのスマホ・タブレットをそのままお渡しください。
           </p>
         )}
       </div>
@@ -180,7 +182,7 @@ export default async function ContractDetailPage({
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <div>
                 <strong>{s.name}</strong>{" "}
-                <span className="muted">（{s.email}）</span>
+                {s.email && <span className="muted">（{s.email}）</span>}
               </div>
               <SignerStatusBadge status={s.status} />
             </div>
@@ -222,17 +224,16 @@ export default async function ContractDetailPage({
                     flexWrap: "wrap",
                   }}
                 >
-                  <span className="hint">署名用URL（この署名者専用）</span>
-                  {emailOn && (
-                    <form action={resendSignEmailAction.bind(null, s.id)}>
-                      <button
-                        className="btn secondary"
-                        style={{ padding: "5px 12px" }}
-                      >
-                        メールを再送
-                      </button>
-                    </form>
-                  )}
+                  <span className="hint">
+                    署名用URL（この署名者専用。離れた相手への案内用）
+                  </span>
+                  <a
+                    className="btn secondary"
+                    style={{ padding: "5px 12px" }}
+                    href={`/sign/${s.token}`}
+                  >
+                    署名ページを開く
+                  </a>
                 </div>
                 <CopyField value={`${appUrl}/sign/${s.token}`} />
               </div>

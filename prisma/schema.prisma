@@ -138,6 +138,20 @@ model AuditLog {
 }
 
 // ─────────────────────────────────────────────
+// 拠点マスタ（物件・事業所ごとの差し込み初期値を保持する）
+// fieldsJson: 差し込みキー→初期値 のJSON（例 {"rent":"40,000"}）
+// ─────────────────────────────────────────────
+model Location {
+  id         String   @id @default(cuid())
+  name       String
+  note       String?
+  fieldsJson String   @default("{}")
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────
 // 担当者マスタ（社内の担当スタッフ。契約作成時に選択する）
 // ─────────────────────────────────────────────
 model Staff {

@@ -91,6 +91,19 @@ CREATE TABLE "AuditLog" (
 );
 
 -- CreateTable
+CREATE TABLE "Location" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "note" TEXT,
+    "fieldsJson" TEXT NOT NULL DEFAULT '{}',
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Location_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "Staff" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,

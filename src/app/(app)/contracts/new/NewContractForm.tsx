@@ -16,6 +16,8 @@ type TemplateOption = {
 
 type StaffOption = { id: string; name: string };
 
+type LocationOption = { id: string; name: string; fields: Record<string, string> };
+
 type ClientOption = {
   id: string;
   name: string;
@@ -32,11 +34,13 @@ export function NewContractForm({
   explanationTemplates,
   clients,
   staffList,
+  locations,
 }: {
   templates: TemplateOption[];
   explanationTemplates: TemplateOption[];
   clients: ClientOption[];
   staffList: StaffOption[];
+  locations: LocationOption[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -44,6 +48,7 @@ export function NewContractForm({
   const [templateId, setTemplateId] = useState("");
   const [explanationTemplateId, setExplanationTemplateId] = useState("");
   const [staffId, setStaffId] = useState("");
+  const [locationId, setLocationId] = useState("");
   const [title, setTitle] = useState("");
   const [contractKeys, setContractKeys] = useState<string[]>([]);
   const [explanationKeys, setExplanationKeys] = useState<string[]>([]);
@@ -69,8 +74,15 @@ export function NewContractForm({
     setLoadingTpl(false);
     const newKeys = res?.keys ?? [];
     setContractKeys(newKeys);
-    // 固定情報の初期値を未入力キーへ自動入力
-    setFields((prev) => ({ ...defaultsFor(newKeys), ...prev }));
+    // 固定情報の初期値（拠点選択時は拠点値を優先）を未入力キーへ自動入力
+    const base = defaultsFor(newKeys);
+    const loc = locations.find((x) => x.id === locationId);
+    if (loc) {
+      for (const k of newKeys) {
+        if (loc.fields[k] !== undefined) base[k] = loc.fields[k];
+      }
+    }
+    setFields((prev) => ({ ...base, ...prev }));
   }
 
   async function onExplanationChange(id: string) {
@@ -83,6 +95,20 @@ export function NewContractForm({
     const newKeys = res?.keys ?? [];
     setExplanationKeys(newKeys);
     setFields((prev) => ({ ...defaultsFor(newKeys), ...prev }));
+  }
+
+  // 拠点マスタの初期値を差し込み項目へ反映
+  function applyLocation(id: string) {
+    setLocationId(id);
+    const loc = locations.find((x) => x.id === id);
+    if (!loc) return;
+    setFields((prev) => {
+      const next = { ...prev };
+      for (const k of keys) {
+        if (loc.fields[k] !== undefined) next[k] = loc.fields[k];
+      }
+      return next;
+    });
   }
 
   // 相手先マスタから署名者・差し込み項目を補完
@@ -161,6 +187,24 @@ export function NewContractForm({
       )}
 
       <div className="panel">
+        {locations.length > 0 && (
+          <>
+            <label htmlFor="location">拠点（物件・事業所）</label>
+            <select
+              id="location"
+              value={locationId}
+              onChange={(e) => applyLocation(e.target.value)}
+            >
+              <option value="">― 選択して初期値を反映 ―</option>
+              {locations.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
+
         {staffList.length > 0 && (
           <>
             <label htmlFor="staff">担当者</label>
@@ -255,7 +299,8 @@ export function NewContractForm({
       <div className="panel">
         <h2 style={{ marginTop: 0 }}>署名者（契約相手）</h2>
         <p className="hint">
-          入居者・利用者などの氏名とメールアドレスを入力します。契約作成後、署名用URLを案内できます。
+          入居者・利用者などの氏名を入力します。メールアドレスは任意です。
+          作成後、この端末に契約書を表示してその場で確認・サインしていただけます。
         </p>
         {signers.map((s, i) => (
           <div key={i} className="signer-card">
@@ -269,7 +314,7 @@ export function NewContractForm({
                 />
               </div>
               <div>
-                <label>メールアドレス</label>
+                <label>メールアドレス（任意）</label>
                 <input
                   type="email"
                   value={s.email}
