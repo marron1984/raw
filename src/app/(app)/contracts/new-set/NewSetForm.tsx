@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { createContractSetAction } from "@/app/actions/contracts";
 import {
   FIELD_LABELS,
+  DEFAULT_FIELD_VALUES,
+  PAYMENT_PLANS,
+  planOverrides,
   defaultsFor,
   isDateField,
   dateValueToIso,
@@ -48,6 +51,7 @@ export function NewSetForm({
   const [setKey, setSetKey] = useState("");
   const [staffId, setStaffId] = useState("");
   const [locationId, setLocationId] = useState("");
+  const [planKey, setPlanKey] = useState(PAYMENT_PLANS[0].key);
   const [signerName, setSignerName] = useState("");
   const [signerEmail, setSignerEmail] = useState("");
   const [fields, setFields] = useState<Record<string, string>>({});
@@ -56,7 +60,7 @@ export function NewSetForm({
   const selected = sets.find((s) => s.key === setKey);
   const keys = selected?.keys ?? [];
 
-  // 拠点マスタの初期値を差し込み項目へ反映（対象セットのキーのみ）
+  // 拠点マスタの初期値を差し込み項目へ反映（対象セットのキーのみ・支払区分は維持）
   function applyLocation(id: string, targetKeys?: string[]) {
     setLocationId(id);
     const loc = locations.find((x) => x.id === id);
@@ -67,6 +71,27 @@ export function NewSetForm({
       for (const k of ks) {
         if (loc.fields[k] !== undefined) next[k] = loc.fields[k];
       }
+      Object.assign(next, planOverrides(planKey, ks));
+      return next;
+    });
+  }
+
+  // 支払区分（年金・一般／生活保護）を切り替え、価格差のある項目を入れ替える
+  function applyPlan(key: string) {
+    setPlanKey(key);
+    const affected = Array.from(
+      new Set(PAYMENT_PLANS.flatMap((p) => Object.keys(p.values)))
+    );
+    const loc = locations.find((x) => x.id === locationId);
+    setFields((prev) => {
+      const next = { ...prev };
+      // まず基準価格（拠点値があれば拠点値）へ戻してから、選択区分の価格を適用
+      for (const k of affected) {
+        if (!keys.includes(k)) continue;
+        const base = loc?.fields[k] ?? DEFAULT_FIELD_VALUES[k];
+        if (base !== undefined) next[k] = base;
+      }
+      Object.assign(next, planOverrides(key, keys));
       return next;
     });
   }
@@ -140,6 +165,7 @@ export function NewSetForm({
                 if (loc.fields[k] !== undefined) base[k] = loc.fields[k];
               }
             }
+            Object.assign(base, planOverrides(planKey, newKeys));
             setFields(base);
           }}
           required
@@ -182,6 +208,22 @@ export function NewSetForm({
             </p>
           </>
         )}
+
+        <label htmlFor="plan">支払区分</label>
+        <select
+          id="plan"
+          value={planKey}
+          onChange={(e) => applyPlan(e.target.value)}
+        >
+          {PAYMENT_PLANS.map((p) => (
+            <option key={p.key} value={p.key}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+        <p className="hint">
+          生活保護の方は市の支給基準に合わせた価格（礼金 138,000円）に切り替わります。
+        </p>
 
         {staffList.length > 0 && (
           <>

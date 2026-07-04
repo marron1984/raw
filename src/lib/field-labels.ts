@@ -61,6 +61,32 @@ export const DEFAULT_FIELD_VALUES: Record<string, string> = {
   office_name: "いいかいご",
 };
 
+// 支払区分（年金・一般／生活保護）。区分によって異なる価格の差分だけを持つ。
+// 生活保護の価格は初期費用見積書（R8.6）より：礼金138,000円（家賃・火災保険は共通）
+export type PaymentPlan = {
+  key: string;
+  label: string;
+  values: Record<string, string>;
+};
+export const PAYMENT_PLANS: PaymentPlan[] = [
+  { key: "nenkin", label: "年金・一般", values: {} },
+  { key: "seiho", label: "生活保護", values: { reikin: "138,000" } },
+];
+
+// 指定キーに対する支払区分の差分価格を返す
+export function planOverrides(
+  planKey: string,
+  keys: string[]
+): Record<string, string> {
+  const plan = PAYMENT_PLANS.find((p) => p.key === planKey);
+  const out: Record<string, string> = {};
+  if (!plan) return out;
+  for (const k of keys) {
+    if (plan.values[k] !== undefined) out[k] = plan.values[k];
+  }
+  return out;
+}
+
 // 日付系のキー（作成フォームでカレンダー入力にする）
 export function isDateField(key: string): boolean {
   return /_date$/.test(key);
