@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/clients", label: "相手先" },
   { href: "/staff", label: "担当者" },
   { href: "/locations", label: "拠点" },
+  { href: "/billing", label: "見積・請求" },
   { href: "/templates", label: "テンプレート" },
 ];
 

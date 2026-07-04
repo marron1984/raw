@@ -5,7 +5,8 @@ import fontkit from "@pdf-lib/fontkit";
 
 let cachedFontBytes: Uint8Array | null = null;
 
-function loadFontBytes(): Uint8Array {
+// 見積書・請求書PDF（billing-pdf.ts）でも同じ日本語フォントを使う
+export function loadFontBytes(): Uint8Array {
   if (cachedFontBytes) return cachedFontBytes;
   const fontPath = path.join(
     process.cwd(),
