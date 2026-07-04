@@ -1,12 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   DEFAULT_FIELD_VALUES,
   PAYMENT_PLANS,
   planOverrides,
 } from "@/lib/field-labels";
 import { buildInitialCostItems, parseAmount, totalOf, yen } from "@/lib/billing";
+import { createRoomExplanationAction } from "@/app/actions/contracts";
 
 type LocationOption = { id: string; name: string; fields: Record<string, string> };
 
@@ -52,6 +54,8 @@ export function BillingForm({
     initial?.bank || DEFAULT_FIELD_VALUES.bank_info || ""
   );
   const [error, setError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const router = useRouter();
 
   // 拠点・支払区分から基準金額を求める（拠点値 > 既定値、礼金は支払区分の差分を適用）
   function baseValues(locId: string, plan: string) {
@@ -123,6 +127,32 @@ export function BillingForm({
       bank: bank.trim(),
     });
     window.open(`/api/billing/pdf?${params.toString()}`, "_blank");
+  }
+
+  // 入居予定の部屋の重要事項説明書だけを作成し、詳細画面（署名・PDF）へ進む
+  async function createExplanation() {
+    setError(null);
+    if (!name.trim()) {
+      setError("宛名（氏名）を入力してください。");
+      return;
+    }
+    setCreating(true);
+    const res = await createRoomExplanationAction({
+      name: name.trim(),
+      room: room.trim(),
+      property: property.trim(),
+      rent,
+      fire,
+      reikin,
+      bank: bank.trim(),
+      moveInIso: /^\d{4}-\d{2}-\d{2}$/.test(moveIn) ? moveIn : undefined,
+    });
+    setCreating(false);
+    if (res.ok) {
+      router.push(`/contracts/${res.id}`);
+    } else {
+      setError(res.error);
+    }
   }
 
   return (
@@ -301,7 +331,19 @@ export function BillingForm({
         <button className="btn success" onClick={() => open("invoice")}>
           請求書PDFを発行
         </button>
+        <button
+          className="btn secondary"
+          onClick={createExplanation}
+          disabled={creating}
+        >
+          {creating ? "作成中..." : "重要事項説明書を作成"}
+        </button>
       </div>
+      <p className="hint" style={{ marginTop: 8 }}>
+        「重要事項説明書を作成」は、この画面の宛名・部屋番号・入居日・金額を差し込んだ
+        重要事項説明書（賃貸借）を単独で作成します。作成後の画面から
+        「現在の内容をPDFで確認」で印刷、または「契約書を表示して署名へ」でその場での説明・署名ができます。
+      </p>
     </form>
   );
 }

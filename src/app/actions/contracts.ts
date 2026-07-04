@@ -12,6 +12,7 @@ import { sendSignRequestEmail } from "@/lib/email";
 import { signUrlForToken } from "@/lib/url";
 import { saveContractToDrive } from "@/lib/drive-save";
 import { getDocSet } from "@/lib/doc-sets";
+import { defaultsFor, isoToJapaneseDate } from "@/lib/field-labels";
 
 // メールは任意（対面サイン運用では空欄で作成し、その場で署名してもらう）
 const signerSchema = z.object({
@@ -313,6 +314,79 @@ export async function createContractSetAction(
 
   revalidatePath("/contracts");
   return { ok: true, ids, count: ids.length };
+}
+
+const roomExplanationSchema = z.object({
+  name: z.string().trim().min(1, "宛名（氏名）を入力してください"),
+  room: z.string().trim().optional(),
+  property: z.string().trim().optional(),
+  rent: z.string().optional(),
+  fire: z.string().optional(),
+  reikin: z.string().optional(),
+  bank: z.string().optional(),
+  moveInIso: z.string().optional(),
+});
+
+// 見積・請求画面から、入居予定の部屋の重要事項説明書だけを単独で作成する
+export async function createRoomExplanationAction(
+  payload: unknown
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  requireAuth();
+  const parsed = roomExplanationSchema.safeParse(payload);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0].message };
+  }
+  const d = parsed.data;
+
+  const template = await prisma.contractTemplate.findFirst({
+    where: { title: "重要事項説明書（賃貸借）", isActive: true },
+  });
+  if (!template) {
+    return {
+      ok: false,
+      error: "テンプレート「重要事項説明書（賃貸借）」が見つかりません。",
+    };
+  }
+
+  // 既定値をベースに、見積・請求画面の入力値を上書きして差し込む
+  const keys = extractPlaceholders(template.body);
+  const fields = defaultsFor(keys);
+  const set = (k: string, v?: string) => {
+    if (v) fields[k] = v;
+  };
+  set("tenant_name", d.name);
+  set("user_name", d.name);
+  set("room_no", d.room);
+  set("property_name", d.property);
+  set("rent", d.rent);
+  set("fire_insurance", d.fire);
+  set("reikin", d.reikin);
+  set("bank_info", d.bank);
+  if (d.moveInIso) set("start_date", isoToJapaneseDate(d.moveInIso));
+
+  const contract = await prisma.contract.create({
+    data: {
+      title: `重要事項説明書（賃貸借）（${d.name} 様${d.room ? ` ${d.room}号室` : ""}）`,
+      category: template.category,
+      body: renderTemplate(template.body, fields),
+      fields: JSON.stringify(fields),
+      templateId: template.id,
+      status: "DRAFT",
+      signers: {
+        create: [
+          { name: d.name, email: "", order: 1, token: generateSignToken() },
+        ],
+      },
+    },
+  });
+  await recordAudit({
+    contractId: contract.id,
+    event: "CREATED",
+    actor: "職員",
+    detail: "見積・請求画面から重要事項説明書を単独作成",
+    ipAddress: getClientIp(),
+  });
+  return { ok: true, id: contract.id };
 }
 
 // 契約の取消
