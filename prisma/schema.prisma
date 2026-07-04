@@ -117,7 +117,12 @@ model Signer {
   contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
   contractId String
 
+  // 相手先マスタとの紐付け（契約作成時に自動登録・自動リンク）
+  client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientId String?
+
   @@index([contractId])
+  @@index([clientId])
 }
 
 // ─────────────────────────────────────────────
@@ -133,6 +138,7 @@ model AuditLog {
 
   contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
   contractId String
+
 
   @@index([contractId])
 }
@@ -180,4 +186,6 @@ model Client {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   createdById String?
+
+  signers Signer[]
 }

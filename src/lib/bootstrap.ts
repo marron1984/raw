@@ -42,6 +42,8 @@ const COLUMN_MIGRATIONS = [
   'ALTER TABLE "Contract" ADD COLUMN IF NOT EXISTS "explanationBody" TEXT',
   'ALTER TABLE "Contract" ADD COLUMN IF NOT EXISTS "staffName" TEXT',
   'ALTER TABLE "Contract" ADD COLUMN IF NOT EXISTS "staffEmail" TEXT',
+  'ALTER TABLE "Signer" ADD COLUMN IF NOT EXISTS "clientId" TEXT',
+  'CREATE INDEX IF NOT EXISTS "Signer_clientId_idx" ON "Signer"("clientId")',
   `CREATE TABLE IF NOT EXISTS "Location" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,

@@ -1,7 +1,6 @@
-// このファイルは prisma/schema.prisma から生成されたDDLです。
-// 再生成: npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script
-// アプリ初回起動時のテーブル自動作成（bootstrap）に使用します。
-
+// prisma/schema.prisma から生成したDDL（初回アクセス時の自動セットアップ用）。
+// スキーマ変更時は以下で再生成すること:
+//   npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script
 export const BOOTSTRAP_DDL = `
 -- CreateTable
 CREATE TABLE "User" (
@@ -73,6 +72,7 @@ CREATE TABLE "Signer" (
     "userAgent" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "contractId" TEXT NOT NULL,
+    "clientId" TEXT,
 
     CONSTRAINT "Signer_pkey" PRIMARY KEY ("id")
 );
@@ -144,6 +144,9 @@ CREATE UNIQUE INDEX "Signer_token_key" ON "Signer"("token");
 CREATE INDEX "Signer_contractId_idx" ON "Signer"("contractId");
 
 -- CreateIndex
+CREATE INDEX "Signer_clientId_idx" ON "Signer"("clientId");
+
+-- CreateIndex
 CREATE INDEX "AuditLog_contractId_idx" ON "AuditLog"("contractId");
 
 -- AddForeignKey
@@ -157,6 +160,9 @@ ALTER TABLE "Contract" ADD CONSTRAINT "Contract_createdById_fkey" FOREIGN KEY ("
 
 -- AddForeignKey
 ALTER TABLE "Signer" ADD CONSTRAINT "Signer_contractId_fkey" FOREIGN KEY ("contractId") REFERENCES "Contract"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Signer" ADD CONSTRAINT "Signer_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_contractId_fkey" FOREIGN KEY ("contractId") REFERENCES "Contract"("id") ON DELETE CASCADE ON UPDATE CASCADE;

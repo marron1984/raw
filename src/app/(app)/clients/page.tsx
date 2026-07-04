@@ -29,6 +29,16 @@ export default async function ClientsPage({
     orderBy: { updatedAt: "desc" },
   });
 
+  // 相手先ごとの契約件数（署名者の自動リンクから集計）
+  const counts = await prisma.signer.groupBy({
+    by: ["clientId"],
+    where: { clientId: { not: null } },
+    _count: { contractId: true },
+  });
+  const countMap = new Map(
+    counts.map((c) => [c.clientId as string, c._count.contractId])
+  );
+
   return (
     <>
       <div className="page-head">
@@ -68,6 +78,7 @@ export default async function ClientsPage({
               <tr>
                 <th>氏名</th>
                 <th>種別</th>
+                <th>契約</th>
                 <th>メール</th>
                 <th>連絡先</th>
                 <th>操作</th>
@@ -85,10 +96,19 @@ export default async function ClientsPage({
                     )}
                   </td>
                   <td>{CLIENT_CATEGORY_LABELS[c.category] ?? c.category}</td>
+                  <td>
+                    {(countMap.get(c.id) ?? 0) > 0 ? (
+                      <Link href={`/clients/${c.id}`}>
+                        {countMap.get(c.id)}件
+                      </Link>
+                    ) : (
+                      <span className="muted">0件</span>
+                    )}
+                  </td>
                   <td className="muted">{c.email ?? "—"}</td>
                   <td className="muted">{c.phone ?? "—"}</td>
                   <td>
-                    <Link href={`/clients/${c.id}`}>編集</Link>
+                    <Link href={`/clients/${c.id}`}>詳細</Link>
                   </td>
                 </tr>
               ))}

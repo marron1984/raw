@@ -13,6 +13,7 @@ import { signUrlForToken } from "@/lib/url";
 import { saveContractToDrive } from "@/lib/drive-save";
 import { getDocSet } from "@/lib/doc-sets";
 import { defaultsFor, isoToJapaneseDate } from "@/lib/field-labels";
+import { ensureClientForSigner } from "@/lib/clients";
 
 // メールは任意（対面サイン運用では空欄で作成し、その場で署名してもらう）
 const signerSchema = z.object({
@@ -71,6 +72,11 @@ export async function createContractAction(
     }
   }
 
+  // 署名者を相手先マスタへ自動登録（既存の同名はそのまま紐付け）
+  const signerClientIds = await Promise.all(
+    signers.map((s) => ensureClientForSigner(s))
+  );
+
   const contract = await prisma.contract.create({
     data: {
       title,
@@ -89,6 +95,7 @@ export async function createContractAction(
           email: s.email,
           order: i + 1,
           token: generateSignToken(),
+          clientId: signerClientIds[i],
         })),
       },
     },
@@ -271,6 +278,9 @@ export async function createContractSetAction(
     };
   }
 
+  // 署名者を相手先マスタへ自動登録し、セット内の全書類を同じ相手先に紐付ける
+  const clientId = await ensureClientForSigner(signer);
+
   const ids: string[] = [];
   for (const item of set.items) {
     const tpl = byTitle.get(item.templateTitle)!;
@@ -297,6 +307,7 @@ export async function createContractSetAction(
               email: signer.email,
               order: 1,
               token: generateSignToken(),
+              clientId,
             },
           ],
         },
@@ -364,6 +375,9 @@ export async function createRoomExplanationAction(
   set("bank_info", d.bank);
   if (d.moveInIso) set("start_date", isoToJapaneseDate(d.moveInIso));
 
+  // 署名者を相手先マスタへ自動登録
+  const clientId = await ensureClientForSigner({ name: d.name });
+
   const contract = await prisma.contract.create({
     data: {
       title: `重要事項説明書（賃貸借）（${d.name} 様${d.room ? ` ${d.room}号室` : ""}）`,
@@ -374,7 +388,13 @@ export async function createRoomExplanationAction(
       status: "DRAFT",
       signers: {
         create: [
-          { name: d.name, email: "", order: 1, token: generateSignToken() },
+          {
+            name: d.name,
+            email: "",
+            order: 1,
+            token: generateSignToken(),
+            clientId,
+          },
         ],
       },
     },
