@@ -47,7 +47,7 @@ npm run build         # 本番ビルド（CIと同じ。DB不要で通ること�
 ## 環境変数（Vercel）
 | 変数 | 必須 | 説明 |
 |---|---|---|
-| `DATABASE_URL` | ✅ | Supabase Session pooler の接続文字列（`?sslmode=require` 付き） |
+| `DATABASE_URL` | ✅ | Supabase **Transaction pooler**（ポート6543）を推奨。末尾に `?pgbouncer=true&connection_limit=1` を付ける（サーバーレスでの接続枯渇・不安定を防ぐ）。Session pooler(5432)はサーバーレスで接続が枯渇しやすい |
 | `APP_PASSCODE` | ✅ | 共通パスワード（全社員同一。未設定時は SEED_ADMIN_PASSWORD を使用） |
 | `MAINTENANCE_KEY` | 任意 | 契約一括リセットAPIの有効化キー（通常は未設定） |
 | `SESSION_SECRET` | 推奨 | セッション署名鍵（未設定時はDATABASE_URLから導出） |
