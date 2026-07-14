@@ -15,7 +15,7 @@ import {
   SignerStatusBadge,
 } from "@/components/StatusBadge";
 import { CopyField } from "@/components/CopyField";
-import { DocBody } from "@/components/DocBody";
+import { ContractBodyEditor } from "./ContractBodyEditor";
 import { CATEGORY_LABELS } from "@/lib/template";
 import { isEmailConfigured } from "@/lib/email";
 import { getAppUrl } from "@/lib/url";
@@ -24,6 +24,7 @@ export const dynamic = "force-dynamic";
 
 const EVENT_LABELS: Record<string, string> = {
   CREATED: "作成",
+  EDITED: "本文編集",
   SENT: "送信",
   VIEWED: "閲覧",
   SIGNED: "署名",
@@ -246,15 +247,13 @@ export default async function ContractDetailPage({
       </div>
 
       {/* 契約本文 */}
-      {contract.explanationBody && (
-        <>
-          <h2>{contract.explanationTitle ?? "重要事項説明書"}</h2>
-          <DocBody className="contract-body" text={contract.explanationBody} />
-        </>
-      )}
-
-      <h2>契約内容</h2>
-      <DocBody className="contract-body" text={contract.body} />
+      <ContractBodyEditor
+        contractId={contract.id}
+        explanationTitle={contract.explanationTitle ?? "重要事項説明書"}
+        body={contract.body}
+        explanationBody={contract.explanationBody}
+        editable={isDraft}
+      />
 
       {/* 監査ログ */}
       <h2>監査ログ（証跡）</h2>

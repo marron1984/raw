@@ -409,6 +409,51 @@ export async function createRoomExplanationAction(
   return { ok: true, id: contract.id };
 }
 
+// 契約本文・重要事項説明書の直接編集（下書きのみ）。
+// プレビュー段階で文言を手直しできるようにする。署名の証跡整合性のため
+// DRAFT 以外は変更不可。
+const updateBodySchema = z.object({
+  body: z.string().trim().min(1, "契約本文を入力してください"),
+  explanationBody: z.string().optional(),
+});
+
+export async function updateContractBodyAction(
+  id: string,
+  payload: unknown
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  requireAuth();
+  const parsed = updateBodySchema.safeParse(payload);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0].message };
+  }
+  const contract = await prisma.contract.findUnique({ where: { id } });
+  if (!contract) return { ok: false, error: "契約が見つかりません。" };
+  if (contract.status !== "DRAFT") {
+    return { ok: false, error: "下書きの契約のみ本文を編集できます。" };
+  }
+
+  await prisma.contract.update({
+    where: { id },
+    data: {
+      body: parsed.data.body,
+      // 重説を持つ契約のみ重説本文も更新（元々無ければ null のまま）
+      explanationBody:
+        contract.explanationBody != null
+          ? parsed.data.explanationBody ?? ""
+          : null,
+    },
+  });
+  await recordAudit({
+    contractId: id,
+    event: "EDITED",
+    actor: contract.staffName ?? "職員",
+    detail: "本文を直接編集",
+    ipAddress: getClientIp(),
+  });
+  revalidatePath(`/contracts/${id}`);
+  return { ok: true };
+}
+
 // 契約の取消
 export async function cancelContractAction(id: string): Promise<void> {
   requireAuth();
