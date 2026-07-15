@@ -7,7 +7,7 @@ function isRetryableDbError(e: unknown): boolean {
   const msg = e instanceof Error ? e.message : String(e);
   const code = (e as { code?: string })?.code ?? "";
   if (["P1001", "P1002", "P1008", "P1017"].includes(code)) return true;
-  return /can't reach database|connection|closed|terminated|reset by peer|econnreset|timed out|too many|server has gone|engine is not yet connected|prepared statement/i.test(
+  return /can't reach database|connection|closed|terminated|reset by peer|econnreset|timed out|too many|max clients|emaxconnsession|pool_size|server has gone|engine is not yet connected|prepared statement/i.test(
     msg
   );
 }
