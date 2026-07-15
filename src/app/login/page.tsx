@@ -1,10 +1,14 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
+import { isAuthenticated } from "@/lib/auth";
 import { LoginForm } from "./LoginForm";
 
-export default async function LoginPage() {
-  const user = await getCurrentUser();
-  if (user) redirect("/dashboard");
+// ビルド時の事前生成でDBに触れないよう、常に動的レンダリング
+export const dynamic = "force-dynamic";
+
+export default function LoginPage() {
+  // 認証無効化中（AUTH_DISABLED）は isAuthenticated が常に true になり、
+  // ログイン画面を経由せずダッシュボードへ直行する
+  if (isAuthenticated()) redirect("/dashboard");
 
   return (
     <div
@@ -16,10 +20,10 @@ export default async function LoginPage() {
         padding: 20,
       }}
     >
-      <div style={{ width: 380 }}>
+      <div style={{ width: 400 }}>
         <div style={{ textAlign: "center", marginBottom: 20 }}>
-          <h1>電子契約システム</h1>
-          <p className="muted">社内アカウントでログインしてください</p>
+          <h1>Dケア電子契約システム</h1>
+          <p className="muted">共通パスワードを入力してください</p>
         </div>
         <div className="panel">
           <LoginForm />

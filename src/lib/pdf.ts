@@ -5,14 +5,15 @@ import fontkit from "@pdf-lib/fontkit";
 
 let cachedFontBytes: Uint8Array | null = null;
 
-function loadFontBytes(): Uint8Array {
+// 見積書・請求書PDF（billing-pdf.ts）でも同じ日本語フォントを使う
+export function loadFontBytes(): Uint8Array {
   if (cachedFontBytes) return cachedFontBytes;
   const fontPath = path.join(
     process.cwd(),
     "src",
     "assets",
     "fonts",
-    "NotoSansJP-Regular.otf"
+    "NotoSansJP-Regular.ttf"
   );
   cachedFontBytes = new Uint8Array(fs.readFileSync(fontPath));
   return cachedFontBytes;
@@ -33,6 +34,9 @@ export type ContractPdfInput = {
   title: string;
   categoryLabel: string;
   body: string;
+  // 重要事項説明書（任意）。あれば契約本文の前に別セクションで出力
+  explanationTitle?: string | null;
+  explanationBody?: string | null;
   signers: SignerSummary[];
   contractId: string;
   createdAt: Date;
@@ -84,10 +88,15 @@ export async function generateContractPdf(
 ): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   doc.registerFontkit(fontkit);
-  const font = await doc.embedFont(loadFontBytes(), { subset: true });
+  // 日本語フォントは subset:false で全体を埋め込む。
+  // pdf-lib のサブセット処理は日本語(glyf/CFF)で壊れたフォントを生成し、
+  // ビューアで文字が表示されない不具合があるため、サブセットしない。
+  const font = await doc.embedFont(loadFontBytes(), { subset: false });
 
+  // A4印刷を想定した余白・文字サイズ（本文10.5pt・行送り1.55）
   const pageSize: [number, number] = [595.28, 841.89]; // A4
-  const margin = 56;
+  const margin = 52;
+  const bottomLimit = margin + 18; // ページ番号の領域を確保
   const maxWidth = pageSize[0] - margin * 2;
   const black = rgb(0.1, 0.1, 0.1);
   const gray = rgb(0.45, 0.45, 0.45);
@@ -100,17 +109,30 @@ export async function generateContractPdf(
     y = pageSize[1] - margin;
   };
 
+  // 見出し直後の改ページ（見出しだけがページ末尾に残る）を防ぐ
+  const ensure = (space: number) => {
+    if (y - space < bottomLimit) newPage();
+  };
+
   const draw = (
     text: string,
     size: number,
-    opts: { color?: ReturnType<typeof rgb>; gap?: number } = {}
+    opts: {
+      color?: ReturnType<typeof rgb>;
+      gap?: number;
+      align?: "left" | "center";
+      leading?: number;
+    } = {}
   ) => {
     const lines = wrapText(text, font, size, maxWidth);
-    const lineHeight = size * 1.6;
+    const lineHeight = size * (opts.leading ?? 1.55);
     for (const line of lines) {
-      if (y - lineHeight < margin) newPage();
+      if (y - lineHeight < bottomLimit) newPage();
+      const w = font.widthOfTextAtSize(line, size);
+      const x =
+        opts.align === "center" ? margin + (maxWidth - w) / 2 : margin;
       page.drawText(line, {
-        x: margin,
+        x,
         y: y - size,
         size,
         font,
@@ -122,7 +144,7 @@ export async function generateContractPdf(
   };
 
   const hr = () => {
-    if (y - 12 < margin) newPage();
+    if (y - 12 < bottomLimit) newPage();
     y -= 6;
     page.drawLine({
       start: { x: margin, y },
@@ -133,13 +155,145 @@ export async function generateContractPdf(
     y -= 12;
   };
 
-  // タイトル
-  draw(input.title, 18, { gap: 4 });
-  draw(`契約種別: ${input.categoryLabel}`, 10, { color: gray, gap: 8 });
+  // 「|」区切りの行を罫線付きの表として描画する（料金表などの崩れ防止）
+  const drawTable = (rows: string[][]) => {
+    const cols = Math.max(...rows.map((r) => r.length));
+    const size = 8;
+    const pad = 4;
+    const lh = size * 1.35;
+    const border = rgb(0.62, 0.67, 0.74);
+    const headerBg = rgb(0.93, 0.95, 0.975);
+
+    // 列幅：各列の最長セル幅に比例して全体幅へ配分（最小36pt）
+    const natural = Array.from({ length: cols }, (_, c) =>
+      Math.max(
+        36,
+        ...rows.map((r) => font.widthOfTextAtSize(r[c] ?? "", size) + 2)
+      )
+    );
+    const usable = maxWidth - cols * pad * 2;
+    const naturalSum = natural.reduce((a, b) => a + b, 0);
+    const colW = natural.map((w) => (w / naturalSum) * usable);
+
+    const drawRow = (cells: string[], isHeader: boolean) => {
+      const wrapped = cells.map((cell, c) =>
+        wrapText(cell ?? "", font, size, colW[c] - 1)
+      );
+      const lines = Math.max(1, ...wrapped.map((w) => w.length));
+      const rowH = lines * lh + pad * 2;
+      if (y - rowH < bottomLimit) newPage();
+      const top = y;
+      const bottom = y - rowH;
+      if (isHeader) {
+        page.drawRectangle({
+          x: margin,
+          y: bottom,
+          width: maxWidth,
+          height: rowH,
+          color: headerBg,
+        });
+      }
+      // 罫線（外枠・縦線・下線）
+      let x = margin;
+      for (let c = 0; c <= cols; c++) {
+        page.drawLine({
+          start: { x, y: top },
+          end: { x, y: bottom },
+          thickness: 0.5,
+          color: border,
+        });
+        if (c < cols) x += colW[c] + pad * 2;
+      }
+      page.drawLine({
+        start: { x: margin, y: top },
+        end: { x: margin + maxWidth, y: top },
+        thickness: 0.5,
+        color: border,
+      });
+      page.drawLine({
+        start: { x: margin, y: bottom },
+        end: { x: margin + maxWidth, y: bottom },
+        thickness: 0.5,
+        color: border,
+      });
+      // セル文字
+      x = margin;
+      for (let c = 0; c < cols; c++) {
+        let ty = top - pad - size;
+        for (const line of wrapped[c] ?? []) {
+          page.drawText(line, { x: x + pad, y: ty, size, font, color: black });
+          ty -= lh;
+        }
+        x += colW[c] + pad * 2;
+      }
+      y = bottom;
+    };
+
+    rows.forEach((r, i) => drawRow(r, i === 0));
+    y -= 12;
+  };
+
+  // 本文を描画。連続する「|」行は表として、それ以外は通常の段落として描く
+  const parseTableRow = (line: string): string[] =>
+    line
+      .trim()
+      .replace(/^\|/, "")
+      .replace(/\|$/, "")
+      .split("|")
+      .map((s) => s.trim());
+
+  const drawBody = (body: string, gap: number) => {
+    const lines = body.split("\n");
+    let textBuf: string[] = [];
+    let tableBuf: string[][] = [];
+    const flushText = () => {
+      if (textBuf.length) {
+        draw(textBuf.join("\n"), 10.5);
+        textBuf = [];
+      }
+    };
+    const flushTable = () => {
+      if (tableBuf.length) {
+        drawTable(tableBuf);
+        tableBuf = [];
+      }
+    };
+    for (const line of lines) {
+      if (line.trimStart().startsWith("|")) {
+        flushText();
+        tableBuf.push(parseTableRow(line));
+      } else {
+        flushTable();
+        textBuf.push(line);
+      }
+    }
+    flushText();
+    flushTable();
+    y -= gap;
+  };
+
+  // 重要事項説明書（あれば契約本文の前に別ページで出力）
+  if (input.explanationBody) {
+    draw(input.explanationTitle ?? "重要事項説明書", 14, {
+      align: "center",
+      gap: 6,
+    });
+    hr();
+    drawBody(input.explanationBody, 14);
+    newPage();
+  }
+
+  // タイトル（紙の契約書と同様に中央寄せ）
+  draw(input.title, 16, { align: "center", gap: 2 });
+  draw(`契約種別: ${input.categoryLabel}`, 9.5, {
+    color: gray,
+    align: "center",
+    gap: 6,
+  });
   hr();
 
   // 本文
-  draw(input.body, 11, { gap: 16 });
+  drawBody(input.body, 14);
 
   // 手書き署名画像を先に埋め込む（描画処理は同期のため事前に解決しておく）
   const signatureImgs = await Promise.all(
@@ -161,21 +315,25 @@ export async function generateContractPdf(
 
   // キャンバスから取得した署名画像を、幅を一定に保って配置する
   const drawSignature = (img: NonNullable<(typeof signatureImgs)[number]>) => {
-    const targetW = 200;
+    const targetW = 180;
     const scale = targetW / img.width;
     const w = targetW;
     const h = img.height * scale;
-    if (y - h < margin) newPage();
+    if (y - h < bottomLimit) newPage();
     page.drawImage(img, { x: margin + 12, y: y - h, width: w, height: h });
     y -= h + 6;
   };
 
-  // 署名欄
+  // 署名欄（見出しと最初の署名者が離れないよう領域を確保）
+  ensure(140);
   hr();
-  draw("■ 電子署名の記録", 13, { gap: 6 });
+  draw("■ 電子署名の記録", 12, { gap: 6 });
   input.signers.forEach((s, i) => {
     const signed = s.status === "SIGNED";
-    draw(`署名者: ${s.name}（${s.email}）`, 11, { gap: 2 });
+    ensure(signed ? 130 : 50);
+    draw(s.email ? `署名者: ${s.name}（${s.email}）` : `署名者: ${s.name}`, 10.5, {
+      gap: 2,
+    });
     draw(
       `  状態: ${signed ? "同意・署名済み" : s.status}` +
         `   署名日時: ${fmtDate(s.signedAt)}`,
@@ -195,9 +353,10 @@ export async function generateContractPdf(
   });
 
   // フッター（証跡情報）
+  ensure(90);
   hr();
   draw(
-    `この文書は電子契約システムにより生成されました。`,
+    `この文書はDケア電子契約システムにより生成されました。`,
     9,
     { color: gray, gap: 2 }
   );
@@ -210,6 +369,20 @@ export async function generateContractPdf(
     { color: gray, gap: 2 }
   );
   draw(`PDF生成日時: ${fmtDate(new Date())}`, 9, { color: gray });
+
+  // 全ページ下部中央にページ番号を付す（印刷時の照合用）
+  const pages = doc.getPages();
+  pages.forEach((p, i) => {
+    const label = `${i + 1} / ${pages.length}`;
+    const w = font.widthOfTextAtSize(label, 9);
+    p.drawText(label, {
+      x: (pageSize[0] - w) / 2,
+      y: 28,
+      size: 9,
+      font,
+      color: gray,
+    });
+  });
 
   return doc.save();
 }

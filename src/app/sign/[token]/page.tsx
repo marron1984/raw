@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/db";
+import { ensureBootstrap } from "@/lib/bootstrap";
 import { markViewedAction } from "@/app/actions/sign";
 import { CATEGORY_LABELS } from "@/lib/template";
+import { DocBody } from "@/components/DocBody";
 import { SignForm } from "./SignForm";
 
 export const dynamic = "force-dynamic";
@@ -10,10 +12,24 @@ export default async function SignPage({
 }: {
   params: { token: string };
 }) {
-  const signer = await prisma.signer.findUnique({
-    where: { token: params.token },
-    include: { contract: true },
-  });
+  // DB未接続でもクラッシュさせず、案内メッセージを表示する
+  let signer;
+  try {
+    await ensureBootstrap();
+    signer = await prisma.signer.findUnique({
+      where: { token: params.token },
+      include: { contract: true },
+    });
+  } catch (e) {
+    console.error("sign page: db error:", e);
+    return (
+      <div className="sign-wrap">
+        <div className="alert error">
+          システムに一時的な問題が発生しています。お手数ですが時間をおいて再度お試しください。
+        </div>
+      </div>
+    );
+  }
 
   // 無効なトークン
   if (!signer) {
@@ -67,7 +83,17 @@ export default async function SignPage({
         </p>
       </div>
 
-      <div className="sign-doc">{contract.body}</div>
+      {contract.explanationBody && (
+        <>
+          <h2 style={{ fontSize: 16 }}>
+            {contract.explanationTitle ?? "重要事項説明書"}
+          </h2>
+          <DocBody className="sign-doc" text={contract.explanationBody} />
+          <h2 style={{ fontSize: 16 }}>契約書</h2>
+        </>
+      )}
+
+      <DocBody className="sign-doc" text={contract.body} />
 
       {alreadySigned ? (
         <div className="consent-box">
@@ -76,7 +102,11 @@ export default async function SignPage({
           </div>
         </div>
       ) : (
-        <SignForm token={params.token} signerName={signer.name} />
+        <SignForm
+          token={params.token}
+          signerName={signer.name}
+          hasExplanation={!!contract.explanationBody}
+        />
       )}
 
       <p className="muted" style={{ fontSize: 12, marginTop: 24, textAlign: "center" }}>

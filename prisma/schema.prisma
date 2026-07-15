@@ -1,12 +1,16 @@
-// 自社向け電子契約システム データモデル
+// 自社向け Dケア電子契約システム データモデル
 // 入居契約・訪問介護利用契約などの電子契約・電子署名を管理する
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // Vercel(Lambda) で動作させるため、ネイティブに加えて RHEL/OpenSSL3 のエンジンも含める
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
+  // 社内利用の規模では直結(非プール)接続1本で十分。
+  // Neonの「Connection pooling」をオフにした接続文字列を設定してください。
   url      = env("DATABASE_URL")
 }
 
@@ -58,10 +62,21 @@ model Contract {
   // 差し込み項目の値（JSON文字列）
   fields    String   @default("{}")
   status    String   @default("DRAFT") // DRAFT | SENT | VIEWED | SIGNED | DECLINED | CANCELLED
+  // 重要事項説明書（任意・契約と束ねて同意取得）
+  explanationTitle String?
+  explanationBody  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   sentAt    DateTime?
   completedAt DateTime?
+
+  // Googleドライブ保存の記録
+  driveFileId String?
+  driveSavedAt DateTime?
+
+  // 担当者（担当者マスタから選択。共通パスワード運用のため契約単位で記録）
+  staffName  String?
+  staffEmail String?
 
   template   ContractTemplate? @relation(fields: [templateId], references: [id])
   templateId String?
@@ -102,7 +117,12 @@ model Signer {
   contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
   contractId String
 
+  // 相手先マスタとの紐付け（契約作成時に自動登録・自動リンク）
+  client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientId String?
+
   @@index([contractId])
+  @@index([clientId])
 }
 
 // ─────────────────────────────────────────────
@@ -110,7 +130,7 @@ model Signer {
 // ─────────────────────────────────────────────
 model AuditLog {
   id        String   @id @default(cuid())
-  event     String // CREATED | SENT | VIEWED | SIGNED | DECLINED | CANCELLED | COMPLETED | PDF_GENERATED
+  event     String // CREATED | SENT | VIEWED | SIGNED | DECLINED | CANCELLED | COMPLETED | PDF_GENERATED | EMAIL_SENT | EMAIL_FAILED | DRIVE_SAVED | DRIVE_FAILED | COPY_SENT | COPY_FAILED
   actor     String // 操作者の表示名（職員名 or 署名者名 or system）
   detail    String?
   ipAddress String?
@@ -119,5 +139,53 @@ model AuditLog {
   contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
   contractId String
 
+
   @@index([contractId])
+}
+
+// ─────────────────────────────────────────────
+// 拠点マスタ（物件・事業所ごとの差し込み初期値を保持する）
+// fieldsJson: 差し込みキー→初期値 のJSON（例 {"rent":"40,000"}）
+// ─────────────────────────────────────────────
+model Location {
+  id         String   @id @default(cuid())
+  name       String
+  note       String?
+  fieldsJson String   @default("{}")
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// 担当者マスタ（社内の担当スタッフ。契約作成時に選択する）
+// ─────────────────────────────────────────────
+model Staff {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// 相手先マスタ（入居者・利用者など。契約作成時に使い回す）
+// ─────────────────────────────────────────────
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  kana      String?
+  email     String?
+  phone     String?
+  address   String?
+  category  String   @default("OTHER") // RESIDENCE | CARE | OTHER
+  note      String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdById String?
+
+  signers Signer[]
 }

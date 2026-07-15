@@ -17,8 +17,8 @@ export function CopyField({ value }: { value: string }) {
   }
 
   return (
-    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-      <span className="copy-url" style={{ flex: 1 }}>
+    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <span className="copy-url" style={{ flex: "1 1 220px" }}>
         {value}
       </span>
       <button

@@ -4,6 +4,9 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { recordAudit, getClientIp } from "@/lib/audit";
+import { saveContractToDrive } from "@/lib/drive-save";
+import { renderContractPdf } from "@/lib/contract-pdf";
+import { sendCompletedCopyEmail } from "@/lib/email";
 
 // 署名ページが開かれたことを記録（閲覧ログ）
 export async function markViewedAction(token: string): Promise<void> {
@@ -101,6 +104,48 @@ export async function signAction(
       actor: "system",
       detail: "全署名者の署名が完了し締結",
     });
+
+    // 締結PDFを1回だけ生成し、ドライブ保存と控えメール送付で使い回す
+    const pdf = await renderContractPdf(signer.contractId);
+
+    // Googleドライブへ自動保存（未設定時は何もしない）
+    await saveContractToDrive(
+      signer.contractId,
+      "system",
+      pdf ?? undefined
+    );
+
+    // 締結済みPDFを控えとして署名者・担当者へ自動送付（未設定時はスキップ）
+    if (pdf) {
+      const base64 = Buffer.from(pdf.bytes).toString("base64");
+      const recipients: { to: string; name: string }[] = signer.contract.signers
+        .filter((s) => s.email)
+        .map((s) => ({ to: s.email, name: s.name }));
+      const staffEmail = signer.contract.staffEmail;
+      if (staffEmail && !recipients.some((r) => r.to === staffEmail)) {
+        recipients.push({
+          to: staffEmail,
+          name: signer.contract.staffName ?? "担当者",
+        });
+      }
+      for (const r of recipients) {
+        const res = await sendCompletedCopyEmail({
+          to: r.to,
+          recipientName: r.name,
+          contractTitle: signer.contract.title,
+          attachment: { filename: pdf.filename, base64 },
+        });
+        if (res.skipped) break; // メール未設定なら以降も同様なので打ち切り
+        await recordAudit({
+          contractId: signer.contractId,
+          event: res.ok ? "COPY_SENT" : "COPY_FAILED",
+          actor: "system",
+          detail: res.ok
+            ? `締結済みPDFの控えを送付: ${r.to}`
+            : `控え送付失敗: ${r.to}（${res.error ?? "不明なエラー"}）`,
+        });
+      }
+    }
   }
 
   revalidatePath(`/contracts/${signer.contractId}`);

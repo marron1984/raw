@@ -1,6 +1,9 @@
 import { createTemplateAction } from "@/app/actions/templates";
 import { TemplateForm } from "../TemplateForm";
 
+// ビルド時の事前生成でDBに触れないよう、常に動的レンダリング
+export const dynamic = "force-dynamic";
+
 export default function NewTemplatePage() {
   return (
     <>

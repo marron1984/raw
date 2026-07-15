@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
+import { isAuthenticated } from "@/lib/auth";
 
-export default async function Home() {
-  const user = await getCurrentUser();
-  redirect(user ? "/dashboard" : "/login");
+// ビルド時の事前生成でDBに触れないよう、常に動的レンダリング
+export const dynamic = "force-dynamic";
+
+export default function Home() {
+  redirect(isAuthenticated() ? "/dashboard" : "/login");
 }

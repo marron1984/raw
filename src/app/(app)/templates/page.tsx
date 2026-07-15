@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { ensureBootstrap } from "@/lib/bootstrap";
 import { CATEGORY_LABELS } from "@/lib/template";
 
 export const dynamic = "force-dynamic";
 
 export default async function TemplatesPage() {
+  await ensureBootstrap();
   const templates = await prisma.contractTemplate.findMany({
     orderBy: { updatedAt: "desc" },
     include: { _count: { select: { contracts: true } } },
@@ -12,7 +14,7 @@ export default async function TemplatesPage() {
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div className="page-head">
         <h1>契約書テンプレート</h1>
         <Link href="/templates/new" className="btn">
           ＋ 新規テンプレート

@@ -1,15 +1,48 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { ensureBootstrap } from "@/lib/bootstrap";
 import { NewContractForm } from "./NewContractForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewContractPage() {
-  const templates = await prisma.contractTemplate.findMany({
-    where: { isActive: true },
-    orderBy: { title: "asc" },
-    select: { id: true, title: true, category: true },
+  await ensureBootstrap();
+  const [allTemplates, clients, staffList, locationRows] = await Promise.all([
+    prisma.contractTemplate.findMany({
+      where: { isActive: true },
+      orderBy: { title: "asc" },
+      select: { id: true, title: true, category: true },
+    }),
+    prisma.client.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, email: true, phone: true, address: true },
+    }),
+    prisma.staff.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+    prisma.location.findMany({
+      where: { isActive: true },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, name: true, fieldsJson: true },
+    }),
+  ]);
+
+  const locations = locationRows.map((l) => {
+    let fields: Record<string, string> = {};
+    try {
+      fields = JSON.parse(l.fieldsJson);
+    } catch {}
+    return { id: l.id, name: l.name, fields };
   });
+
+  // 重要事項説明書は契約テンプレート選択肢から除外し、専用selectに回す
+  const templates = allTemplates.filter((t) => t.category !== "EXPLANATION");
+  const explanationTemplates = allTemplates.filter(
+    (t) => t.category === "EXPLANATION"
+  );
 
   return (
     <>
@@ -24,7 +57,13 @@ export default async function NewContractPage() {
         </div>
       ) : (
         <div style={{ marginTop: 16 }}>
-          <NewContractForm templates={templates} />
+          <NewContractForm
+            templates={templates}
+            explanationTemplates={explanationTemplates}
+            clients={clients}
+            staffList={staffList}
+            locations={locations}
+          />
         </div>
       )}
     </>

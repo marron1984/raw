@@ -1,22 +1,30 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { ensureBootstrap } from "@/lib/bootstrap";
 import {
   sendContractAction,
+  startSigningAction,
   cancelContractAction,
   deleteContractAction,
+  saveToDriveAction,
 } from "@/app/actions/contracts";
+import { isDriveConfigured } from "@/lib/drive-save";
 import {
   ContractStatusBadge,
   SignerStatusBadge,
 } from "@/components/StatusBadge";
 import { CopyField } from "@/components/CopyField";
+import { ContractBodyEditor } from "./ContractBodyEditor";
 import { CATEGORY_LABELS } from "@/lib/template";
+import { isEmailConfigured } from "@/lib/email";
+import { getAppUrl } from "@/lib/url";
 
 export const dynamic = "force-dynamic";
 
 const EVENT_LABELS: Record<string, string> = {
   CREATED: "作成",
+  EDITED: "本文編集",
   SENT: "送信",
   VIEWED: "閲覧",
   SIGNED: "署名",
@@ -24,6 +32,12 @@ const EVENT_LABELS: Record<string, string> = {
   CANCELLED: "取消",
   COMPLETED: "締結完了",
   PDF_GENERATED: "PDF生成",
+  EMAIL_SENT: "メール送信",
+  EMAIL_FAILED: "メール送信失敗",
+  DRIVE_SAVED: "ドライブ保存",
+  DRIVE_FAILED: "ドライブ保存失敗",
+  COPY_SENT: "控え送付",
+  COPY_FAILED: "控え送付失敗",
 };
 
 function fmt(d: Date | null) {
@@ -42,26 +56,34 @@ export default async function ContractDetailPage({
 }: {
   params: { id: string };
 }) {
+  await ensureBootstrap();
   const contract = await prisma.contract.findUnique({
     where: { id: params.id },
     include: {
       signers: { orderBy: { order: "asc" } },
       auditLogs: { orderBy: { createdAt: "desc" } },
-      createdBy: true,
     },
   });
   if (!contract) notFound();
 
-  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
+  const appUrl = getAppUrl();
+  const emailOn = isEmailConfigured();
+  const driveOn = isDriveConfigured();
   const isDraft = contract.status === "DRAFT";
   const isSigned = contract.status === "SIGNED";
   const canShowLinks = ["SENT", "VIEWED", "SIGNED", "DECLINED"].includes(
     contract.status
   );
 
+  const hasUnsigned = contract.signers.some((s) => s.status !== "SIGNED");
+  const canStartSigning =
+    ["DRAFT", "SENT", "VIEWED"].includes(contract.status) && hasUnsigned;
+
   const sendWithId = sendContractAction.bind(null, contract.id);
+  const startWithId = startSigningAction.bind(null, contract.id);
   const cancelWithId = cancelContractAction.bind(null, contract.id);
   const deleteWithId = deleteContractAction.bind(null, contract.id);
+  const saveDriveWithId = saveToDriveAction.bind(null, contract.id);
 
   return (
     <>
@@ -70,7 +92,7 @@ export default async function ContractDetailPage({
           ← 契約一覧へ
         </Link>
       </div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div className="page-head">
         <h1>{contract.title}</h1>
         <ContractStatusBadge status={contract.status} />
       </div>
@@ -78,15 +100,29 @@ export default async function ContractDetailPage({
       {/* 操作 */}
       <div className="panel">
         <div className="btn-row">
-          {isDraft && (
+          {canStartSigning && (
+            <form action={startWithId}>
+              <button className="btn success">契約書を表示して署名へ</button>
+            </form>
+          )}
+          {isDraft && emailOn && (
             <form action={sendWithId}>
-              <button className="btn success">署名依頼を送信する</button>
+              <button className="btn secondary">署名依頼メールを送信する</button>
             </form>
           )}
           {isSigned && (
             <a className="btn" href={`/api/contracts/${contract.id}/pdf`} target="_blank">
               締結済みPDFをダウンロード
             </a>
+          )}
+          {isSigned && driveOn && (
+            <form action={saveDriveWithId}>
+              <button className="btn secondary">
+                {contract.driveSavedAt
+                  ? "Googleドライブに再保存"
+                  : "Googleドライブに保存"}
+              </button>
+            </form>
           )}
           {!isSigned && (
             <a
@@ -108,9 +144,10 @@ export default async function ContractDetailPage({
             </form>
           )}
         </div>
-        {isDraft && (
+        {canStartSigning && (
           <p className="hint" style={{ marginTop: 10 }}>
-            送信すると署名者ごとの署名用URLが有効になります。URLを各署名者へメール等で案内してください。
+            「契約書を表示して署名へ」を押すと、この端末に契約書が表示され、その場で内容を確認して手書きサインをいただけます。
+            署名者にはお使いのスマホ・タブレットをそのままお渡しください。
           </p>
         )}
       </div>
@@ -120,14 +157,24 @@ export default async function ContractDetailPage({
         <dl className="kv">
           <dt>契約種別</dt>
           <dd>{CATEGORY_LABELS[contract.category] ?? contract.category}</dd>
-          <dt>作成者</dt>
-          <dd>{contract.createdBy?.name ?? "—"}</dd>
+          <dt>担当者</dt>
+          <dd>{contract.staffName ?? "—"}</dd>
           <dt>作成日時</dt>
           <dd>{fmt(contract.createdAt)}</dd>
           <dt>送信日時</dt>
           <dd>{fmt(contract.sentAt)}</dd>
           <dt>締結完了日時</dt>
           <dd>{fmt(contract.completedAt)}</dd>
+          {driveOn && (
+            <>
+              <dt>Googleドライブ</dt>
+              <dd>
+                {contract.driveSavedAt
+                  ? `保存済み（${fmt(contract.driveSavedAt)}）`
+                  : "未保存"}
+              </dd>
+            </>
+          )}
         </dl>
       </div>
 
@@ -139,7 +186,7 @@ export default async function ContractDetailPage({
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <div>
                 <strong>{s.name}</strong>{" "}
-                <span className="muted">（{s.email}）</span>
+                {s.email && <span className="muted">（{s.email}）</span>}
               </div>
               <SignerStatusBadge status={s.status} />
             </div>
@@ -171,8 +218,26 @@ export default async function ContractDetailPage({
             )}
             {canShowLinks && s.status !== "SIGNED" && (
               <div style={{ marginTop: 10 }}>
-                <div className="hint" style={{ marginBottom: 4 }}>
-                  署名用URL（この署名者専用）
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: 4,
+                    gap: 8,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <span className="hint">
+                    署名用URL（この署名者専用。離れた相手への案内用）
+                  </span>
+                  <a
+                    className="btn secondary"
+                    style={{ padding: "5px 12px" }}
+                    href={`/sign/${s.token}`}
+                  >
+                    署名ページを開く
+                  </a>
                 </div>
                 <CopyField value={`${appUrl}/sign/${s.token}`} />
               </div>
@@ -182,8 +247,13 @@ export default async function ContractDetailPage({
       </div>
 
       {/* 契約本文 */}
-      <h2>契約内容</h2>
-      <div className="contract-body">{contract.body}</div>
+      <ContractBodyEditor
+        contractId={contract.id}
+        explanationTitle={contract.explanationTitle ?? "重要事項説明書"}
+        body={contract.body}
+        explanationBody={contract.explanationBody}
+        editable={isDraft}
+      />
 
       {/* 監査ログ */}
       <h2>監査ログ（証跡）</h2>
