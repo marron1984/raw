@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   DEFAULT_FIELD_VALUES,
   PAYMENT_PLANS,
   planOverrides,
 } from "@/lib/field-labels";
-import { buildInitialCostItems, parseAmount, totalOf, yen } from "@/lib/billing";
+import { buildInitialCostItems, parseAmount, yen } from "@/lib/billing";
 import { createRoomExplanationAction } from "@/app/actions/contracts";
 
 type LocationOption = { id: string; name: string; fields: Record<string, string> };
@@ -24,6 +24,9 @@ type BillingInitial = {
   reikin?: string;
   bank?: string;
 };
+
+// 画面で編集する明細の1行（金額は編集しやすいよう文字列で保持）
+type Row = { name: string; price: string; qty: string; note: string };
 
 export function BillingForm({
   locations,
@@ -50,12 +53,49 @@ export function BillingForm({
   const [reikin, setReikin] = useState(
     initial?.reikin || DEFAULT_FIELD_VALUES.reikin || ""
   );
+  const [water, setWater] = useState(DEFAULT_FIELD_VALUES.water_fee || "");
+  const [utilities, setUtilities] = useState(
+    DEFAULT_FIELD_VALUES.utility_fee || ""
+  );
   const [bank, setBank] = useState(
     initial?.bank || DEFAULT_FIELD_VALUES.bank_info || ""
   );
+
+  // 編集可能な明細
+  const [rows, setRows] = useState<Row[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const router = useRouter();
+
+  // 上の入力（入居日・各金額）が変わったら、標準明細を再計算して表へ反映する。
+  // 表を手で編集・追加した内容は、上の入力を変えるまで保持される。
+  useEffect(() => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(moveIn)) {
+      setRows([]);
+      return;
+    }
+    const items = buildInitialCostItems({
+      moveInIso: moveIn,
+      rent: parseAmount(rent),
+      fireInsurance: parseAmount(fire),
+      reikin: parseAmount(reikin),
+      waterFee: parseAmount(water),
+      utilities: parseAmount(utilities),
+    });
+    setRows(
+      items.map((i) => ({
+        name: i.name,
+        price: String(i.unitPrice),
+        qty: String(i.qty),
+        note: i.note ?? "",
+      }))
+    );
+  }, [moveIn, rent, fire, reikin, water, utilities]);
+
+  const total = rows.reduce(
+    (s, r) => s + parseAmount(r.price) * (parseInt(r.qty, 10) || 1),
+    0
+  );
 
   // 拠点・支払区分から基準金額を求める（拠点値 > 既定値、礼金は支払区分の差分を適用）
   function baseValues(locId: string, plan: string) {
@@ -66,6 +106,8 @@ export function BillingForm({
       rent: pick("rent"),
       fire: pick("fire_insurance"),
       reikin: pick("reikin"),
+      water: pick("water_fee"),
+      utilities: pick("utility_fee"),
       bank: pick("bank_info"),
     };
     const over = planOverrides(plan, ["reikin", "rent", "fire_insurance"]);
@@ -82,6 +124,8 @@ export function BillingForm({
     setRent(v.rent);
     setFire(v.fire);
     setReikin(v.reikin);
+    setWater(v.water);
+    setUtilities(v.utilities);
     setBank(v.bank);
   }
 
@@ -93,16 +137,15 @@ export function BillingForm({
     setReikin(v.reikin);
   }
 
-  // 明細プレビュー（PDFと同じ計算）
-  const items = useMemo(() => {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(moveIn)) return [];
-    return buildInitialCostItems({
-      moveInIso: moveIn,
-      rent: parseAmount(rent),
-      fireInsurance: parseAmount(fire),
-      reikin: parseAmount(reikin),
-    });
-  }, [moveIn, rent, fire, reikin]);
+  function updateRow(i: number, patch: Partial<Row>) {
+    setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  }
+  function addRow() {
+    setRows((prev) => [...prev, { name: "", price: "", qty: "1", note: "" }]);
+  }
+  function removeRow(i: number) {
+    setRows((prev) => prev.filter((_, idx) => idx !== i));
+  }
 
   function open(docType: "quote" | "invoice") {
     setError(null);
@@ -110,8 +153,16 @@ export function BillingForm({
       setError("宛名（氏名）を入力してください。");
       return;
     }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(moveIn)) {
-      setError("入居日を選択してください。");
+    const itemsPayload = rows
+      .map((r) => ({
+        name: r.name.trim(),
+        unitPrice: parseAmount(r.price),
+        qty: parseInt(r.qty, 10) || 1,
+        note: r.note.trim() || undefined,
+      }))
+      .filter((r) => r.name);
+    if (itemsPayload.length === 0) {
+      setError("明細を1行以上入力してください。");
       return;
     }
     const params = new URLSearchParams({
@@ -119,12 +170,9 @@ export function BillingForm({
       name: name.trim(),
       room: room.trim(),
       property: property.trim(),
-      moveIn,
       due: due || moveIn,
-      rent,
-      fire,
-      reikin,
       bank: bank.trim(),
+      items: JSON.stringify(itemsPayload),
     });
     window.open(`/api/billing/pdf?${params.toString()}`, "_blank");
   }
@@ -241,7 +289,7 @@ export function BillingForm({
       </div>
 
       <div className="panel">
-        <h2 style={{ marginTop: 0 }}>金額（編集可）</h2>
+        <h2 style={{ marginTop: 0 }}>基準金額（変更すると下の明細に反映されます）</h2>
         <div className="grid2">
           <div>
             <label htmlFor="property">物件名称</label>
@@ -279,6 +327,24 @@ export function BillingForm({
               onChange={(e) => setReikin(e.target.value)}
             />
           </div>
+          <div>
+            <label htmlFor="water">水道代(円・定額)</label>
+            <input
+              id="water"
+              type="text"
+              value={water}
+              onChange={(e) => setWater(e.target.value)}
+            />
+          </div>
+          <div>
+            <label htmlFor="utilities">光熱費(円・定額)</label>
+            <input
+              id="utilities"
+              type="text"
+              value={utilities}
+              onChange={(e) => setUtilities(e.target.value)}
+            />
+          </div>
         </div>
         <label htmlFor="bank">振込先口座</label>
         <input
@@ -287,42 +353,96 @@ export function BillingForm({
           value={bank}
           onChange={(e) => setBank(e.target.value)}
         />
+        <p className="hint" style={{ marginTop: 6 }}>
+          水道代・光熱費は日割りせず定額で計上します。金額は下の明細で個別に調整できます。
+        </p>
       </div>
 
-      {items.length > 0 && (
-        <div className="panel">
-          <h2 style={{ marginTop: 0 }}>明細プレビュー</h2>
+      <div className="panel">
+        <h2 style={{ marginTop: 0 }}>明細（摘要・金額を編集、追加・削除できます）</h2>
+        <div style={{ overflowX: "auto" }}>
           <table>
             <thead>
               <tr>
-                <th>内容</th>
-                <th style={{ textAlign: "right" }}>小計</th>
-                <th>備考</th>
+                <th style={{ minWidth: 160 }}>摘要</th>
+                <th style={{ minWidth: 110 }}>単価(円)</th>
+                <th style={{ width: 70 }}>数量</th>
+                <th style={{ minWidth: 110, textAlign: "right" }}>小計</th>
+                <th style={{ minWidth: 140 }}>備考</th>
+                <th style={{ width: 50 }}></th>
               </tr>
             </thead>
             <tbody>
-              {items.map((i) => (
-                <tr key={i.name}>
-                  <td>{i.name}</td>
-                  <td style={{ textAlign: "right" }}>
-                    {yen(i.unitPrice * i.qty)}
+              {rows.map((r, i) => (
+                <tr key={i}>
+                  <td>
+                    <input
+                      type="text"
+                      value={r.name}
+                      onChange={(e) => updateRow(i, { name: e.target.value })}
+                    />
                   </td>
-                  <td className="muted">{i.note ?? ""}</td>
+                  <td>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={r.price}
+                      onChange={(e) => updateRow(i, { price: e.target.value })}
+                      style={{ textAlign: "right" }}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={r.qty}
+                      onChange={(e) => updateRow(i, { qty: e.target.value })}
+                      style={{ textAlign: "center" }}
+                    />
+                  </td>
+                  <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                    {yen(parseAmount(r.price) * (parseInt(r.qty, 10) || 1))}
+                  </td>
+                  <td>
+                    <input
+                      type="text"
+                      value={r.note}
+                      onChange={(e) => updateRow(i, { note: e.target.value })}
+                    />
+                  </td>
+                  <td style={{ textAlign: "center" }}>
+                    <button
+                      type="button"
+                      className="btn danger"
+                      style={{ padding: "4px 10px" }}
+                      onClick={() => removeRow(i)}
+                      aria-label="この行を削除"
+                    >
+                      ×
+                    </button>
+                  </td>
                 </tr>
               ))}
               <tr>
-                <td>
+                <td colSpan={3} style={{ textAlign: "right" }}>
                   <strong>ご請求額合計（税込）</strong>
                 </td>
                 <td style={{ textAlign: "right" }}>
-                  <strong>{yen(totalOf(items))}</strong>
+                  <strong>{yen(total)}</strong>
                 </td>
-                <td className="muted">※家賃等は消費税非課税</td>
+                <td className="muted" colSpan={2}>
+                  ※家賃等は消費税非課税
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
-      )}
+        <div style={{ marginTop: 10 }}>
+          <button type="button" className="btn secondary" onClick={addRow}>
+            ＋ 明細を追加
+          </button>
+        </div>
+      </div>
 
       <div className="btn-row">
         <button className="btn" onClick={() => open("quote")}>
@@ -340,9 +460,7 @@ export function BillingForm({
         </button>
       </div>
       <p className="hint" style={{ marginTop: 8 }}>
-        「重要事項説明書を作成」は、この画面の宛名・部屋番号・入居日・金額を差し込んだ
-        重要事項説明書（賃貸借）を単独で作成します。作成後の画面から
-        「現在の内容をPDFで確認」で印刷、または「契約書を表示して署名へ」でその場での説明・署名ができます。
+        PDFは上の明細の内容そのままで出力されます。摘要・金額の変更や、行の追加・削除も反映されます。
       </p>
     </form>
   );

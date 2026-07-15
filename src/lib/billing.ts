@@ -19,11 +19,14 @@ export function yen(n: number): string {
 
 // 入居日に基づいて初期費用の明細を組み立てる。
 // 例）入居日 6/30・家賃40,000 → 日割り家賃 ¥1,333（1日分）＋ 7月分家賃 ¥40,000
+// 水道代・光熱費は定額（日割りしない）。
 export function buildInitialCostItems(input: {
   moveInIso: string; // 入居日（YYYY-MM-DD）
   rent: number; // 月額家賃
   fireInsurance: number; // 火災保険料（2年間分）
   reikin: number; // 礼金
+  waterFee?: number; // 水道代（定額・日割りなし）
+  utilities?: number; // 光熱費（定額・日割りなし）
 }): BillingItem[] {
   const items: BillingItem[] = [];
   const m = input.moveInIso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -58,6 +61,22 @@ export function buildInitialCostItems(input: {
   }
   if (input.reikin > 0) {
     items.push({ name: "礼金", unitPrice: input.reikin, qty: 1 });
+  }
+  if (input.waterFee && input.waterFee > 0) {
+    items.push({
+      name: "水道代",
+      unitPrice: input.waterFee,
+      qty: 1,
+      note: "定額（日割りなし）",
+    });
+  }
+  if (input.utilities && input.utilities > 0) {
+    items.push({
+      name: "光熱費",
+      unitPrice: input.utilities,
+      qty: 1,
+      note: "定額（日割りなし）",
+    });
   }
   return items;
 }
